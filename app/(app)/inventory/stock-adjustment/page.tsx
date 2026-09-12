@@ -1,0 +1,12 @@
+'use client';
+import { FormEvent, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { workflowApi } from '@/lib/api';
+import { ErrorState } from '@/components/shared';
+import { Field, WorkflowCard, inputClass } from '@/components/workflow-card';
+export default function Page() {
+  const [form, setForm] = useState({ warehouse_id: '', item_id: '', quantity: '', direction: 'in', rate: '', reason: '' });
+  const mutation = useMutation({ mutationFn: () => workflowApi.stockAdjust({ warehouse_id: form.warehouse_id, reason: form.reason, items: [{ item_id: form.item_id, quantity: Number(form.quantity), direction: form.direction, rate: Number(form.rate || 0) }] }) });
+  function submit(event: FormEvent) { event.preventDefault(); mutation.mutate(); }
+  return <WorkflowCard title="Stock Adjustment" description="Post an auditable inventory adjustment with insufficient-stock protection."><form onSubmit={submit} className="grid gap-4 md:grid-cols-2"><Field label="Warehouse"><input required className={inputClass} value={form.warehouse_id} onChange={e => setForm({...form, warehouse_id:e.target.value})} /></Field><Field label="Item"><input required className={inputClass} value={form.item_id} onChange={e => setForm({...form, item_id:e.target.value})} /></Field><Field label="Quantity"><input required min="0.001" step="0.001" type="number" className={inputClass} value={form.quantity} onChange={e => setForm({...form, quantity:e.target.value})} /></Field><Field label="Direction"><select className={inputClass} value={form.direction} onChange={e => setForm({...form, direction:e.target.value})}><option value="in">Stock in</option><option value="out">Stock out</option></select></Field><Field label="Rate"><input step="0.01" type="number" className={inputClass} value={form.rate} onChange={e => setForm({...form, rate:e.target.value})} /></Field><Field label="Reason"><input required className={inputClass} value={form.reason} onChange={e => setForm({...form, reason:e.target.value})} /></Field><div className="md:col-span-2"><button disabled={mutation.isPending} className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white disabled:opacity-50">{mutation.isPending ? 'Posting...' : 'Post adjustment'}</button></div></form>{mutation.isSuccess && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Stock adjustment posted successfully.</p>}{mutation.isError && <ErrorState message={mutation.error.message} retry={() => mutation.reset()} />}</WorkflowCard>;
+}

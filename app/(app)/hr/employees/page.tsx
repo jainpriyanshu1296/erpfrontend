@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Employees" description="Manage employee records and payroll inputs." endpoint="/hr/employees" columns={['employee_code','name','designation','salary_type','basic_salary','is_active']} fields={[{key:'employee_code',label:'Employee code',required:true},{key:'name',label:'Full name',required:true},{key:'designation',label:'Designation'},{key:'salary_type',label:'Salary type',type:'select',options:['monthly','daily','piece_rate'],required:true},{key:'basic_salary',label:'Basic salary',type:'number'}]} />; }

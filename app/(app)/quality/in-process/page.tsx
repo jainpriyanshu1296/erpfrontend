@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="In-Process Quality" description="Record quality checks during production." endpoint="/quality/in-process" columns={['reference_id','item_id','inspected_qty','accepted_qty','rejected_qty','overall_result']} fields={[{key:'reference_id',label:'Work order',required:true},{key:'item_id',label:'Item',required:true},{key:'inspected_qty',label:'Inspected quantity',type:'number',required:true},{key:'accepted_qty',label:'Accepted quantity',type:'number'}]} />; }

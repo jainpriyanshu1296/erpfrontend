@@ -1,0 +1,9 @@
+'use client';
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { authApi } from '@/lib/api';
+export default function RegisterPage() {
+  const router = useRouter(); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setError(''); const data = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<string, string>; try { const result = await authApi.register(data); localStorage.setItem('erp_token', result.data.token); localStorage.setItem('erp_refresh_token', result.data.refresh_token); localStorage.setItem('erp_org_slug', result.data.org.slug); router.push('/dashboard'); } catch (e) { setError(e instanceof Error ? e.message : 'Registration failed'); } finally { setBusy(false); } }
+  return <main className="flex min-h-screen items-center justify-center p-6"><form onSubmit={submit} className="w-full max-w-lg space-y-4 rounded-xl border bg-white p-8 shadow-sm"><h1 className="text-2xl font-bold">Create organization</h1>{error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>}<input required name="company_name" placeholder="Company name" className="w-full rounded-lg border p-3" /><input name="owner_name" placeholder="Owner name" className="w-full rounded-lg border p-3" /><input required type="email" name="owner_email" placeholder="Owner email" className="w-full rounded-lg border p-3" /><input required type="password" name="password" placeholder="Password" className="w-full rounded-lg border p-3" /><button disabled={busy} className="w-full rounded-lg bg-primary p-3 font-semibold text-white">{busy ? 'Creating...' : 'Create workspace'}</button><a className="block text-center text-sm text-primary" href="/login">Back to sign in</a></form></main>;
+}

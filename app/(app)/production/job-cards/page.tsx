@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Production Job Cards" description="Capture shop-floor production and rejection entries." endpoint="/production/job-cards" columns={['wo_number','finished_item_id','planned_qty','produced_qty','status']} fields={[{key:'wo_number',label:'Work order',required:true},{key:'produced_qty',label:'Produced quantity',type:'number',required:true},{key:'rejected_qty',label:'Rejected quantity',type:'number'}]} />; }

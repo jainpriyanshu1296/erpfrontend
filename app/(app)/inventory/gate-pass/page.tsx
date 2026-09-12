@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Gate Passes" description="Track inward and outward material movement." endpoint="/inventory/gate-pass" columns={['pass_number','pass_type','item_id','warehouse_id','quantity','status']} fields={[{key:'pass_number',label:'Pass number',required:true},{key:'pass_type',label:'Type',type:'select',options:['inward','outward'],required:true},{key:'item_id',label:'Item',required:true},{key:'warehouse_id',label:'Warehouse',required:true},{key:'quantity',label:'Quantity',type:'number',required:true}]} />; }

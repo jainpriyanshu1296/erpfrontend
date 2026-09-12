@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Inward Quality Control" description="Inspect received goods before inventory posting." endpoint="/quality/inward" columns={['inspection_type','reference_id','item_id','inspected_qty','accepted_qty','overall_result']} fields={[{key:'reference_id',label:'GRN reference',required:true},{key:'item_id',label:'Item',required:true},{key:'inspected_qty',label:'Inspected quantity',type:'number',required:true},{key:'accepted_qty',label:'Accepted quantity',type:'number'}]} />; }

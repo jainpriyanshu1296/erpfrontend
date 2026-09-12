@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Final Inspection" description="Release finished goods after final quality inspection." endpoint="/quality/final" columns={['reference_id','item_id','inspected_qty','accepted_qty','rejected_qty','overall_result']} fields={[{key:'reference_id',label:'Work order',required:true},{key:'item_id',label:'Item',required:true},{key:'inspected_qty',label:'Inspected quantity',type:'number',required:true},{key:'overall_result',label:'Result',type:'select',options:['pass','fail','conditional'],required:true}]} />; }
