@@ -1,15 +1,17 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Cpu, Zap, ShoppingCart, Factory, PackageCheck, FileText, CheckCircle2, Power } from 'lucide-react';
+import { Cpu, ShoppingCart, Factory, PackageCheck, FileText, CheckCircle2, Power, ShieldCheck, FileWarning, Layers } from 'lucide-react';
 import { api } from '@/lib/api';
-import { EmptyState, ErrorState, Skeleton } from '@/components/shared';
+import { ErrorState, Skeleton } from '@/components/shared';
 import { useToast } from '@/components/toast';
 
 interface AutomationRules {
   auto_wo_on_so: boolean;
   auto_pr_on_shortfall: boolean;
   auto_backflush_on_wo: boolean;
+  auto_qc_debit_note: boolean;
+  auto_stock_reserve: boolean;
   auto_invoice_on_dispatch: boolean;
 }
 
@@ -45,6 +47,8 @@ export default function AutomationRulesPage() {
     auto_wo_on_so: true,
     auto_pr_on_shortfall: true,
     auto_backflush_on_wo: true,
+    auto_qc_debit_note: true,
+    auto_stock_reserve: true,
     auto_invoice_on_dispatch: true
   };
 
@@ -58,39 +62,57 @@ export default function AutomationRulesPage() {
   const automationsList = [
     {
       key: 'auto_wo_on_so' as const,
-      title: 'Autonomous Work Order Generation',
+      title: '1.1 Autonomous Work Order Generation',
       subtitle: 'Sales Order Confirmation -> Auto Work Order',
       description:
         'When a Sales Order is confirmed, the system immediately checks the product BOM and automatically drafts/releases a Work Order with shop-floor routing stages.',
       icon: Factory,
-      color: 'indigo'
+      badge: 'Shop Floor'
     },
     {
       key: 'auto_pr_on_shortfall' as const,
-      title: 'BOM Explosion & Material Shortfall PR',
+      title: '1.2 BOM Shortfall & Auto Purchase Requisition',
       subtitle: 'BOM Calculation -> Auto Purchase Requisition',
       description:
-        'Calculates exact raw material requirements for confirmed orders against live warehouse inventory. If any steel, fasteners, or chemicals are short, a Purchase Requisition is automatically drafted.',
+        'Calculates exact raw material requirements against live warehouse inventory (deducting existing reservations). If steel, fasteners, or chemicals are short, a Purchase Requisition is automatically drafted.',
       icon: ShoppingCart,
-      color: 'red'
+      badge: 'Procurement'
     },
     {
       key: 'auto_backflush_on_wo' as const,
-      title: 'Production Auto-Backflushing',
+      title: '1.3 Production Auto-Backflushing',
       subtitle: 'Work Order Complete -> Auto Stock Ledger Issue & Receipt',
       description:
         'Eliminates shop-floor data entry. When an operator marks a work order finished, the system automatically deducts raw materials using the BOM formula and credits finished goods to stock.',
       icon: PackageCheck,
-      color: 'emerald'
+      badge: 'Inventory'
+    },
+    {
+      key: 'auto_qc_debit_note' as const,
+      title: '1.4 QC Rejection -> Auto Vendor Debit Note',
+      subtitle: 'Inspection Defect -> Auto Split & Debit Note Draft',
+      description:
+        'Whenever incoming goods are inspected, accepted units move into main stock and rejected units move to quarantine. For any rejected count, a formal vendor Debit Note is auto-drafted.',
+      icon: FileWarning,
+      badge: 'Quality'
+    },
+    {
+      key: 'auto_stock_reserve' as const,
+      title: '1.5 Hard Stock Reservation (Anti Double-Selling)',
+      subtitle: 'SO Confirm -> Lock Finished Stock',
+      description:
+        'Locks physical warehouse inventory upon Sales Order confirmation by populating reserved_qty. Prevents two sales representatives from double-booking the same stock.',
+      icon: ShieldCheck,
+      badge: 'Sales'
     },
     {
       key: 'auto_invoice_on_dispatch' as const,
-      title: 'Auto-Draft Tax Invoice on Dispatch',
-      subtitle: 'Delivery Challan -> Auto Tax Invoice',
+      title: '1.6 Delivery Challan -> Auto Tax Invoice Draft',
+      subtitle: 'Dispatch Challan -> Auto GST Invoice',
       description:
-        'Automatically drafts the GST Tax Invoice with place-of-supply rules (CGST/SGST vs IGST) and round-offs whenever a dispatch delivery challan is recorded.',
+        'Automatically drafts the GST Tax Invoice with place-of-supply rules (CGST/SGST vs IGST) and round-offs whenever a dispatch delivery challan is recorded, updating SO to dispatched.',
       icon: FileText,
-      color: 'blue'
+      badge: 'Finance'
     }
   ];
 
@@ -106,7 +128,7 @@ export default function AutomationRulesPage() {
           </div>
           <h1 className="mt-1 text-2xl font-bold text-slate-800">Process Automation Rules</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Configure zero-touch automated event triggers. When enabled, business operations execute autonomously without manual clerk intervention.
+            Configure zero-touch automated event triggers. Every process step can execute autonomously without manual clerk intervention.
           </p>
         </div>
       </div>
@@ -127,14 +149,19 @@ export default function AutomationRulesPage() {
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <span
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                      isEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {isEnabled ? <CheckCircle2 size={13} /> : <Power size={13} />}
-                    {isEnabled ? 'Autonomous Active' : 'Disabled (Manual)'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                      {item.badge}
+                    </span>
+                    <span
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
+                        isEnabled ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                      }`}
+                    >
+                      {isEnabled ? <CheckCircle2 size={13} /> : <Power size={13} />}
+                      {isEnabled ? 'Active' : 'Disabled'}
+                    </span>
+                  </div>
 
                   <button
                     type="button"
@@ -158,16 +185,14 @@ export default function AutomationRulesPage() {
                   </div>
                   <div>
                     <h2 className="font-bold text-slate-800">{item.title}</h2>
-                    <p className="text-xs font-semibold text-indigo-600">{item.subtitle}</p>
+                    <p className="text-xs font-medium text-indigo-600">{item.subtitle}</p>
                     <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.description}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 border-t pt-3 text-right">
-                <span className="text-[11px] text-slate-400">
-                  {isEnabled ? 'Status: Autonomous event-triggered' : 'Status: Manual user action required'}
-                </span>
+              <div className="mt-5 border-t pt-3 text-[11px] text-slate-400">
+                <span>Database Flag: <code>{item.key}</code></span>
               </div>
             </div>
           );
