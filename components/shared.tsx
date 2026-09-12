@@ -1,6 +1,6 @@
 'use client';
 import { ReactNode, useEffect, useState } from 'react';
-import { AlertCircle, Box, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Package, ShoppingCart, Users, X, Factory, Wallet, FileBarChart, Settings, Bell } from 'lucide-react';
+import { AlertCircle, Box, ChevronLeft, ChevronRight, LayoutDashboard, LogOut, Package, ShoppingCart, Users, X, Factory, Wallet, FileBarChart, Settings, Bell, Cpu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { Module, OrgContext, TabItem } from '@/types';
@@ -24,6 +24,7 @@ const nav = [
   { key: 'notifications', label: 'Notifications', path: '/notifications', icon: Bell },
   { key: 'settings', label: 'Settings', path: '/settings/company', icon: Settings },
   { key: 'settings-modules', label: 'Feature Toggles', path: '/settings/modules', icon: Settings },
+  { key: 'settings-automations', label: 'Process Automations', path: '/settings/automations', icon: Cpu },
   { key: 'billing', label: 'Billing', path: '/billing', icon: Wallet },
 ];
 
@@ -82,6 +83,7 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
     if (key === 'dashboard') return pathname === '/dashboard';
     if (key === 'tally') return pathname === '/finance/tally';
     if (key === 'settings-modules') return pathname === '/settings/modules';
+    if (key === 'settings-automations') return pathname === '/settings/automations';
     return pathname.startsWith(`/${key}`);
   };
 
