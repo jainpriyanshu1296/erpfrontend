@@ -1,4 +1,4 @@
-import { api } from './api-client';
+import { api, adminApi } from './api-client';
 import type { DashboardSummary, Module, Notification, OrgContext } from '@/types';
 export const authApi = {
   login: (body: { email: string; password: string; org_slug: string }) => api.post<{ token: string; refresh_token: string; org: OrgContext }>('/auth/login', body),
@@ -36,8 +36,8 @@ export const workflowApi = {
   markAllNotificationsRead: () => api.post<unknown>('/notifications/read-all', {})
   ,saveBomComponents: (id: string, components: unknown[]) => api.post<unknown>(`/production/bom/${id}/components`, { components })
   ,saveInvoiceLines: (id: string, body: unknown) => api.post<unknown>(`/sales/invoices/${id}/lines`, body)
-  ,suspendOrganization: (id: string, reason: string) => api.post<unknown>(`/admin/organizations/${id}/suspend`, { reason })
-  ,activateOrganization: (id: string) => api.post<unknown>(`/admin/organizations/${id}/activate`, {})
+  ,suspendOrganization: (id: string, reason: string) => adminApi.post<unknown>(`/admin/organizations/${id}/suspend`, { reason })
+  ,activateOrganization: (id: string) => adminApi.post<unknown>(`/admin/organizations/${id}/activate`, {})
   ,getWorkOrderOperations: (woId: string) => api.get<unknown[]>(`/production/work-orders/${woId}/operations`)
   ,addWorkOrderOperation: (woId: string, body: unknown) => api.post<unknown>(`/production/work-orders/${woId}/operations`, body)
   ,updateWorkOrderOperation: (woId: string, opId: string, body: unknown) => api.put<unknown>(`/production/work-orders/${woId}/operations/${opId}`, body)
