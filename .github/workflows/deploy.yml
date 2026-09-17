@@ -1,0 +1,46 @@
+name: Deploy ERP Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: erpfrontend-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Deploy ERP Frontend
+        shell: /bin/zsh
+        run: |
+          set -e
+
+          export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
+          cd /Users/priyanshujain/erpfrontend
+
+          echo "==> Fetching latest code"
+          /usr/bin/git fetch origin main
+
+          echo "==> Resetting local clone to origin/main"
+          /usr/bin/git reset --hard origin/main
+
+          echo "==> Installing dependencies"
+          /opt/homebrew/bin/npm ci
+
+          echo "==> Building Next.js application"
+          /opt/homebrew/bin/npm run build
+
+          echo "==> Syncing standalone static files"
+          rm -rf .next/standalone/.next/static
+          cp -R .next/static .next/standalone/.next/
+
+          echo "==> Restarting PM2 application"
+          /opt/homebrew/bin/pm2 restart erp-frontend --update-env
+
+          echo "==> Deployment completed"
+          /opt/homebrew/bin/pm2 status erp-frontend
