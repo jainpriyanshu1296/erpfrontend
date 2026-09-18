@@ -5,7 +5,6 @@ const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1
 class ApiClient {
   private adminMode = false;
 
-  // Admin mode — uses erp_admin_token, no X-Org-Slug, redirects to /admin/dashboard on 401
   asAdmin() {
     const c = new ApiClient();
     c.adminMode = true;
@@ -47,13 +46,11 @@ class ApiClient {
 
     if (response.status === 401 && typeof window !== 'undefined') {
       if (this.adminMode) {
-        // Admin session expired — clear admin token, go back to admin login
         localStorage.removeItem('erp_admin_token');
         window.location.href = '/admin/dashboard';
         throw new Error('Admin session expired. Please login again.');
       }
 
-      // Org user — try refresh token first
       const refreshToken = localStorage.getItem('erp_refresh_token');
       if (endpoint !== '/auth/refresh' && refreshToken) {
         const refresh = await fetch(`${baseUrl}/auth/refresh`, {
@@ -68,9 +65,11 @@ class ApiClient {
           return this.request<T>(endpoint, init);
         }
       }
-      // Refresh failed or no refresh token — go to org login
+      // Clear ALL org keys on session expiry
       localStorage.removeItem('erp_token');
       localStorage.removeItem('erp_refresh_token');
+      localStorage.removeItem('erp_org_slug');
+      localStorage.removeItem('erp_tabs');
       window.location.href = '/login';
       throw new Error('Session expired. Please login again.');
     }

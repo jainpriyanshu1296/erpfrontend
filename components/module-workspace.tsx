@@ -7,7 +7,7 @@ import { EmptyState, ErrorState, Skeleton } from '@/components/shared';
 import { useToast } from '@/components/toast';
 import { z } from 'zod';
 
-type Field = { key: string; label: string; type?: 'text'|'number'|'date'|'select'; required?: boolean; options?: string[] };
+type Field = { key: string; label: string; type?: 'text'|'number'|'date'|'select'|'password'; required?: boolean; options?: string[] };
 type Props = { title: string; description: string; endpoint: string; fields: Field[]; columns: string[]; actionEndpoint?: string };
 
 export function ModuleWorkspace({ title, description, endpoint, fields, columns, actionEndpoint }: Props) {

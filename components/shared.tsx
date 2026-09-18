@@ -134,6 +134,8 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
               try { await authApi.logout(); } finally {
                 localStorage.removeItem('erp_token');
                 localStorage.removeItem('erp_refresh_token');
+                localStorage.removeItem('erp_org_slug');
+                localStorage.removeItem('erp_tabs');
                 router.push('/login');
               }
             }}
