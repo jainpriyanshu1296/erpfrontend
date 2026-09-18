@@ -29,11 +29,8 @@ const nav = [
   { key: 'reports-smart', label: 'Smart Reports', path: '/reports/smart', icon: MessageSquareCode },
   { key: 'forecasting', label: 'Forecasting & AI', path: '/reports/forecasting', icon: TrendingUp },
   { key: 'notifications', label: 'Notifications', path: '/notifications', icon: Bell },
-  { key: 'settings', label: 'Settings', path: '/settings/company', icon: Settings },
-  { key: 'settings-modules', label: 'Feature Toggles', path: '/settings/modules', icon: Settings },
-  { key: 'settings-automations', label: 'Process Automations', path: '/settings/automations', icon: Cpu },
-  { key: 'settings-whatsapp', label: 'WhatsApp (WATI)', path: '/settings/whatsapp', icon: MessageSquare },
   { key: 'billing', label: 'Billing', path: '/billing', icon: Wallet },
+  { key: 'settings', label: 'Settings', path: '/settings', icon: Settings },
 ];
 
 export function AppShell({ children, org, modules }: { children: ReactNode; org?: OrgContext; modules?: Module[] }) {
@@ -92,11 +89,9 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
   const active = (key: string) => {
     if (key === 'dashboard') return pathname === '/dashboard';
     if (key === 'tally') return pathname === '/finance/tally';
-    if (key === 'settings-modules') return pathname === '/settings/modules';
-    if (key === 'settings-automations') return pathname === '/settings/automations';
-    if (key === 'settings-whatsapp') return pathname === '/settings/whatsapp';
     if (key === 'reports-smart') return pathname === '/reports/smart';
     if (key === 'forecasting') return pathname === '/reports/forecasting';
+    if (key === 'settings') return pathname.startsWith('/settings');
     return pathname.startsWith(`/${key}`);
   };
 
@@ -154,7 +149,7 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
           {nav.map(item => {
             const Icon = item.icon;
             const isTally = item.key === 'tally';
-            const isSetting = item.key.startsWith('settings');
+            const isSetting = item.key === 'settings' || item.key === 'billing' || item.key === 'notifications';
             const isSmart = item.key === 'reports-smart' || item.key === 'forecasting';
             const locked = item.key !== 'dashboard' && !isTally && !isSetting && !isSmart && modules && !modules.some(m => m.module_key === item.key);
             return (
@@ -189,13 +184,19 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
             <nav className="mt-3 flex-1 overflow-y-auto space-y-1">
               {nav.map(item => {
                 const Icon = item.icon;
+                const isTally = item.key === 'tally';
+                const isSetting = item.key.startsWith('settings');
+                const isSmart = item.key === 'reports-smart' || item.key === 'forecasting';
+                const locked = item.key !== 'dashboard' && !isTally && !isSetting && !isSmart &&
+                  modules && !modules.some(m => m.module_key === item.key);
                 return (
                   <button
                     key={item.key}
+                    disabled={locked}
                     onClick={() => openTab(item)}
                     className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm ${
                       active(item.key) ? 'bg-indigo-50 font-semibold text-indigo-700' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
+                    } ${locked ? 'cursor-not-allowed opacity-40' : ''}`}
                   >
                     <Icon size={18} className="shrink-0" />
                     <span>{item.label}</span>
