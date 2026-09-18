@@ -135,16 +135,16 @@ function UsersTab() {
             <button onClick={() => setOpen(false)}><X size={16} className="text-slate-400" /></button>
           </div>
           <form onSubmit={e => { e.preventDefault(); createMutation.mutate(form); }} className="grid gap-3 sm:grid-cols-2">
-            {[
-              ['name',       'Full Name',  'text',     true],
-              ['email',      'Email',      'email',    true],
-              ['password',   'Password',   'password', true],
-              ['phone',      'Phone',      'tel',      false],
-              ['department', 'Department', 'text',     false],
-            ] as [string, string, string, boolean][]).map(([k, label, type, req]) => (
+            {([ 
+              {k: 'name',       label: 'Full Name',  type: 'text',     req: true},
+              {k: 'email',      label: 'Email',      type: 'email',    req: true},
+              {k: 'password',   label: 'Password',   type: 'password', req: true},
+              {k: 'phone',      label: 'Phone',      type: 'tel',      req: false},
+              {k: 'department', label: 'Department', type: 'text',     req: false},
+            ] as {k: string; label: string; type: string; req: boolean}[]).map(({k, label, type, req}) => (
               <label key={k} className="block text-xs font-medium text-slate-700">
                 {label}{req ? ' *' : ''}
-                <input type={type as string} required={!!req}
+                <input type={type} required={req}
                   value={form[k as keyof typeof form]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
                   className={`mt-1 ${inp}`} />
               </label>
