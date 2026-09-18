@@ -141,7 +141,7 @@ function UsersTab() {
               ['password',   'Password',   'password', true],
               ['phone',      'Phone',      'tel',      false],
               ['department', 'Department', 'text',     false],
-            ].map(([k, label, type, req]) => (
+            ] as [string, string, string, boolean][]).map(([k, label, type, req]) => (
               <label key={k} className="block text-xs font-medium text-slate-700">
                 {label}{req ? ' *' : ''}
                 <input type={type as string} required={!!req}
