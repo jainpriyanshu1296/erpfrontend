@@ -1,0 +1,4 @@
+import { OperationalWorkspace } from '@/components/operational-workspace';
+export default function ProductionOutputPage() {
+  return <OperationalWorkspace title="Production Output" description="Post finished output against work orders with traceable quantities and batches." endpoint="/closure/production-outputs" columns={['production_order_id','item_id','quantity','batch_id','warehouse_id','created_at']} action={{ label: 'Post', path: '/closure/production-outputs/:id/post' }} create={{ fields: [{ key: 'production_order_id', label: 'Production order', required: true }, { key: 'item_id', label: 'Item', required: true }, { key: 'quantity', label: 'Quantity', type: 'number', required: true }, { key: 'batch_id', label: 'Batch' }, { key: 'warehouse_id', label: 'Warehouse', required: true }] }} />;
+}

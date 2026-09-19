@@ -15,17 +15,19 @@ export function EmptyState({ title, description }: { title: string; description:
 export function ErrorState({ message, retry }: { message: string; retry: () => void }) { return <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700"><AlertCircle className="mb-2" /><p>{message}</p><button onClick={retry} className="mt-3 rounded bg-red-600 px-3 py-2 text-white">Retry</button></div>; }
 
 const nav = [
-  { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { key: 'purchase', label: 'Purchase', path: '/purchase/requisitions', icon: ShoppingCart },
-  { key: 'inventory', label: 'Inventory', path: '/inventory/stock', icon: Package },
+  { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'Workspace' },
+  { key: 'purchase', label: 'Purchase', path: '/purchase/requisitions', icon: ShoppingCart, section: 'Inventory & purchasing' },
+  { key: 'vendors', label: 'Vendors', path: '/vendors', icon: Users, section: 'Inventory & purchasing' },
+  { key: 'inventory', label: 'Inventory', path: '/inventory/stock', icon: Package, section: 'Inventory & purchasing' },
   { key: 'production', label: 'Production', path: '/production/work-orders', icon: Factory },
   { key: 'jobwork', label: 'Job Work', path: '/jobwork/challans', icon: Box },
-  { key: 'quality', label: 'Quality', path: '/quality/final', icon: FileBarChart },
+  { key: 'quality', label: 'Quality', path: '/quality', icon: FileBarChart },
   { key: 'sales', label: 'Sales & Dispatch', path: '/sales/quotations', icon: ShoppingCart },
-  { key: 'hr', label: 'HR & Payroll', path: '/hr/attendance', icon: Users },
-  { key: 'finance', label: 'Finance', path: '/finance/receivables', icon: Wallet },
+  { key: 'customers', label: 'Customers', path: '/customers', icon: Users, section: 'Sales & dispatch' },
+  { key: 'hr', label: 'HR & Payroll', path: '/hr', icon: Users },
+  { key: 'finance', label: 'Finance', path: '/finance', icon: Wallet },
   { key: 'tally', label: 'Tally Prime Sync', path: '/finance/tally', icon: Wallet },
-  { key: 'reports', label: 'Reports', path: '/reports/records', icon: FileBarChart },
+  { key: 'reports', label: 'Reports', path: '/reports', icon: FileBarChart },
   { key: 'reports-smart', label: 'Smart Reports', path: '/reports/smart', icon: MessageSquareCode },
   { key: 'forecasting', label: 'Forecasting & AI', path: '/reports/forecasting', icon: TrendingUp },
   { key: 'notifications', label: 'Notifications', path: '/notifications', icon: Bell },
@@ -127,9 +129,6 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
           <button
             onClick={async () => {
               try { await authApi.logout(); } finally {
-                localStorage.removeItem('erp_token');
-                localStorage.removeItem('erp_refresh_token');
-                localStorage.removeItem('erp_org_slug');
                 localStorage.removeItem('erp_tabs');
                 router.push('/login');
               }
@@ -146,13 +145,16 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
       {/* Desktop Sidebar */}
       <aside className={`fixed bottom-0 left-0 top-16 z-10 hidden border-r bg-white p-3 transition-all duration-200 md:block ${collapsed ? 'w-16' : 'w-64'}`}>
         <nav className="space-y-1 overflow-y-auto max-h-[calc(100vh-4rem)]">
-          {nav.map(item => {
+          {nav.map((item, index) => {
             const Icon = item.icon;
             const isTally = item.key === 'tally';
             const isSetting = item.key === 'settings' || item.key === 'billing' || item.key === 'notifications';
             const isSmart = item.key === 'reports-smart' || item.key === 'forecasting';
-            const locked = item.key !== 'dashboard' && !isTally && !isSetting && !isSmart && modules && !modules.some(m => m.module_key === item.key);
+            const moduleKey = item.key === 'customers' ? 'sales' : item.key;
+            const locked = item.key !== 'dashboard' && !isTally && !isSetting && !isSmart && modules && !modules.some(m => m.module_key === moduleKey);
             return (
+              <div key={item.key}>
+              {item.section !== nav[index - 1]?.section && !collapsed && <p className="mb-1 mt-4 px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.section}</p>}
               <button
                 disabled={locked}
                 key={item.key}
@@ -165,6 +167,7 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
                 <Icon size={18} className="shrink-0" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
               </button>
+              </div>
             );
           })}
         </nav>
@@ -182,16 +185,18 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
               </button>
             </div>
             <nav className="mt-3 flex-1 overflow-y-auto space-y-1">
-              {nav.map(item => {
+              {nav.map((item, index) => {
                 const Icon = item.icon;
                 const isTally = item.key === 'tally';
                 const isSetting = item.key.startsWith('settings');
                 const isSmart = item.key === 'reports-smart' || item.key === 'forecasting';
+                const moduleKey = item.key === 'customers' ? 'sales' : item.key;
                 const locked = item.key !== 'dashboard' && !isTally && !isSetting && !isSmart &&
-                  modules && !modules.some(m => m.module_key === item.key);
+                  modules && !modules.some(m => m.module_key === moduleKey);
                 return (
+                  <div key={item.key}>
+                  {item.section !== nav[index - 1]?.section && <p className="mb-1 mt-4 px-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.section}</p>}
                   <button
-                    key={item.key}
                     disabled={locked}
                     onClick={() => openTab(item)}
                     className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left text-sm ${
@@ -201,6 +206,7 @@ export function AppShell({ children, org, modules }: { children: ReactNode; org?
                     <Icon size={18} className="shrink-0" />
                     <span>{item.label}</span>
                   </button>
+                  </div>
                 );
               })}
             </nav>

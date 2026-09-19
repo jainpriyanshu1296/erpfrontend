@@ -7,7 +7,7 @@ import { Shield, LayoutDashboard, Building2, PackageCheck, LogOut, AlertCircle }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [token, setToken] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Login form state
@@ -17,9 +17,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('erp_admin_token');
-    setToken(saved);
-    setLoading(false);
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/admin/dashboard`, { credentials: 'include' })
+      .then(response => setAuthenticated(response.ok))
+      .finally(() => setLoading(false));
   }, []);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -31,6 +31,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
       const res = await fetch(`${base}/auth/admin-login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
@@ -40,9 +41,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         throw new Error(data.message || 'Invalid administrator credentials');
       }
 
-      // Only erp_admin_token — never touches erp_token (org session)
-      localStorage.setItem('erp_admin_token', data.data.token);
-      setToken(data.data.token);
+      setAuthenticated(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -50,9 +49,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleAdminLogout = () => {
-    localStorage.removeItem('erp_admin_token');
-    setToken(null);
+  const handleAdminLogout = async () => {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/auth/admin-logout`, { method: 'POST', credentials: 'include' });
+    setAuthenticated(false);
     // Stay on /admin/dashboard — layout will show login form automatically
   };
 
@@ -65,7 +64,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   // Not authenticated — show admin login form (no redirect, no loop)
-  if (!token) {
+  if (!authenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
         <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">

@@ -1,0 +1,4 @@
+import { OperationalWorkspace } from '@/components/operational-workspace';
+export default function ProductionScrapPage() {
+  return <OperationalWorkspace title="Production Scrap" description="Capture and approve scrap quantities with reason and cost traceability." endpoint="/closure/production-scrap" columns={['production_order_id','item_id','quantity','reason','warehouse_id','created_at']} action={{ label: 'Post', path: '/closure/production-scrap/:id/post' }} create={{ fields: [{ key: 'production_order_id', label: 'Production order', required: true }, { key: 'item_id', label: 'Item', required: true }, { key: 'quantity', label: 'Quantity', type: 'number', required: true }, { key: 'reason', label: 'Reason', required: true }, { key: 'warehouse_id', label: 'Warehouse', required: true }] }} />;
+}

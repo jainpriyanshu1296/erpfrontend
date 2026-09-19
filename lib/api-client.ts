@@ -1,41 +1,30 @@
 import type { ApiResponse } from '@/types';
 
-const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+function baseUrl() {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined' && window.location.hostname.endsWith('.daanoday.com')) return '/api/v1';
+  return 'http://localhost:5000/api/v1';
+}
 
 class ApiClient {
   private adminMode = false;
 
   asAdmin() {
-    const c = new ApiClient();
-    c.adminMode = true;
-    return c;
+    const client = new ApiClient();
+    client.adminMode = true;
+    return client;
   }
 
   private headers() {
-    if (typeof window === 'undefined') return { 'Content-Type': 'application/json' };
-
-    if (this.adminMode) {
-      const token = localStorage.getItem('erp_admin_token');
-      return {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-    }
-
-    const token = localStorage.getItem('erp_token');
-    const slug = localStorage.getItem('erp_org_slug');
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(slug ? { 'X-Org-Slug': slug } : {}),
-    };
+    return { 'Content-Type': 'application/json' };
   }
 
   async request<T>(endpoint: string, init: RequestInit = {}): Promise<ApiResponse<T>> {
     let response: Response;
     try {
-      response = await fetch(`${baseUrl}${endpoint}`, {
+      response = await fetch(`${baseUrl()}${endpoint}`, {
         ...init,
+        credentials: 'include',
         headers: { ...this.headers(), ...(init.headers || {}) },
       });
     } catch {
@@ -43,37 +32,24 @@ class ApiClient {
     }
 
     const body = await response.json().catch(() => ({}));
-
     if (response.status === 401 && typeof window !== 'undefined') {
       if (this.adminMode) {
-        localStorage.removeItem('erp_admin_token');
         window.location.href = '/admin/dashboard';
         throw new Error('Admin session expired. Please login again.');
       }
-
-      const refreshToken = localStorage.getItem('erp_refresh_token');
-      if (endpoint !== '/auth/refresh' && refreshToken) {
-        const refresh = await fetch(`${baseUrl}/auth/refresh`, {
+      if (endpoint !== '/auth/refresh') {
+        const refresh = await fetch(`${baseUrl()}/auth/refresh`, {
           method: 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
         });
         const refreshBody = await refresh.json().catch(() => ({}));
-        if (refresh.ok && refreshBody.data?.token && refreshBody.data?.refresh_token) {
-          localStorage.setItem('erp_token', refreshBody.data.token);
-          localStorage.setItem('erp_refresh_token', refreshBody.data.refresh_token);
-          return this.request<T>(endpoint, init);
-        }
+        if (refresh.ok && refreshBody.data?.refreshed) return this.request<T>(endpoint, init);
       }
-      // Clear ALL org keys on session expiry
-      localStorage.removeItem('erp_token');
-      localStorage.removeItem('erp_refresh_token');
-      localStorage.removeItem('erp_org_slug');
       localStorage.removeItem('erp_tabs');
       window.location.href = '/login';
       throw new Error('Session expired. Please login again.');
     }
-
     if (!response.ok) throw new Error(body.message || 'Request failed');
     return body as ApiResponse<T>;
   }

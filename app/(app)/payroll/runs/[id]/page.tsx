@@ -1,0 +1,5 @@
+'use client';
+import { useParams } from 'next/navigation';
+import { RecordDetail } from '@/components/record-detail';
+import { WorkflowAction } from '@/components/workflow-action';
+export default function Page() { const { id } = useParams<{ id: string }>(); return <div className="space-y-6"><RecordDetail title="Payroll run" endpoint={`/hr/payroll/${id}`} backHref="/payroll/runs" fields={[{key:'run_number',label:'Run number'},{key:'period_start',label:'Period start'},{key:'period_end',label:'Period end'},{key:'status',label:'Status'},{key:'total_amount',label:'Total amount'}]} /><WorkflowAction title="Add payroll item" endpoint={`/payroll/${id}/items`} fields={[{key:'employee_id',label:'Employee ID',required:true},{key:'gross_amount',label:'Gross amount',type:'number',required:true},{key:'deductions',label:'Deductions',type:'number'}]} submitLabel="Add item" /><WorkflowAction title="Finalize payroll" endpoint={`/payroll/${id}/finalize`} fields={[]} submitLabel="Finalize run" /></div>; }

@@ -1,17 +1,29 @@
 import { api, adminApi } from './api-client';
-import type { DashboardSummary, Module, Notification, OrgContext } from '@/types';
+import type { BillingInfo, DashboardSummary, Module, Notification, OrgContext, PaymentOrder, PublicModule } from '@/types';
 export const authApi = {
-  login: (body: { email: string; password: string; org_slug: string }) => api.post<{ token: string; refresh_token: string; org: OrgContext }>('/auth/login', body),
-  register: (body: Record<string, string>) => api.post<{ token: string; refresh_token: string; org: OrgContext }>('/auth/register', body),
+  login: (body: { email: string; password: string }) => api.post<{ user: { id: string; name: string; email: string; role: string }; org: OrgContext }>('/auth/login', body),
+  register: (body: { company_name: string; owner_name: string; owner_email: string; password: string; subdomain: string; plan: string; duration_months: number; modules: string[] }) => api.post<{ organization_id: string; subscription_id: string; hostname: string; plan: string; duration_months: number; modules: string[]; amount: number }>('/auth/register', body),
   logout: () => api.post<null>('/auth/logout', {}),
-  forgotPassword: (body: { email: string; org_slug: string }) => api.post<null>('/auth/forgot-password', body),
-  resetPassword: (body: { token: string; password: string; org_slug: string }) => api.post<null>('/auth/reset-password', body)
+  forgotPassword: (body: { email: string }) => api.post<null>('/auth/forgot-password', body),
+  resetPassword: (body: { token: string; password: string }) => api.post<null>('/auth/reset-password', body)
+};
+export const publicApi = {
+  tenant: () => api.get<{ resolved: boolean; organization?: { company_name: string; slug: string; status: string; hostname: string } }>('/public/tenant'),
+  modules: () => api.get<PublicModule[]>('/public/modules'),
+  pricing: () => api.get<Array<{ plan: string; duration_months: number; amount: number; currency: string }>>('/public/pricing'),
+  createOrder: (organizationId: string, subscriptionId: string) => api.post<{ subscription_id: string; order: { id: string; amount: number; currency: string } }>(`/public/onboarding/organizations/${organizationId}/order`, { subscription_id: subscriptionId }),
+  verifyPayment: (body: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => api.post<{ activated: boolean; hostname?: string }>('/public/onboarding/payments/verify', body)
 };
 export const orgApi = {
   info: () => api.get<OrgContext>('/org/info'),
   modules: () => api.get<Module[]>('/org/modules'),
   summary: () => api.get<DashboardSummary>('/dashboard/summary'),
   alerts: () => api.get<Notification[]>('/dashboard/alerts')
+};
+export const billingApi = {
+  info: () => api.get<BillingInfo>('/billing/info'),
+  createOrder: (body: { plan: string; duration_months: number }) => api.post<PaymentOrder>('/billing/create-order', body),
+  verifyPayment: (body: { subscription_id: string; razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => api.post<{ verified: boolean }>('/billing/verify-payment', body)
 };
 export const recordsApi = (endpoint: string) => ({
   list: (params?: Record<string, string>) => api.get<unknown[]>(endpoint, params),

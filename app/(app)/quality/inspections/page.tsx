@@ -1,0 +1,3 @@
+'use client';
+import { DomainPage } from '@/components/domain-page';
+export default function Page() { return <DomainPage title='Inspections' description='Track incoming, in-process, and final quality inspections.' endpoint='/quality/inspections' columns={['inspection_number','source_type','source_id','status','result']} fields={[{key:'inspection_number',label:'Inspection number',required:true},{key:'source_type',label:'Source type',required:true},{key:'source_id',label:'Source ID'},{key:'inspected_at',label:'Inspected at',type:'date'}]} statusOptions={['pending','passed','failed','rework']} transitionEndpoint="/quality" detailPath="/quality/inspections" />; }

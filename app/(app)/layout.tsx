@@ -10,11 +10,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   // Client-side auth guard — redirect to login if no token
   useEffect(() => {
-    const token = localStorage.getItem('erp_token');
-    const slug = localStorage.getItem('erp_org_slug');
-    if (!token || !slug) {
-      router.replace('/login');
-    }
+    // The backend validates the HttpOnly session cookie through the organization query.
   }, [router]);
 
   const org = useQuery({ queryKey: ['org'], queryFn: () => orgApi.info() });
@@ -35,9 +31,6 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <ErrorState
           message="Unable to load organization. Please sign in again."
           retry={() => {
-            localStorage.removeItem('erp_token');
-            localStorage.removeItem('erp_refresh_token');
-            localStorage.removeItem('erp_org_slug');
             localStorage.removeItem('erp_tabs');
             window.location.href = '/login';
           }}

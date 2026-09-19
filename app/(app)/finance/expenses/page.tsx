@@ -1,0 +1,4 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+import { WorkflowAction } from '@/components/workflow-action';
+export default function Page() { return <div className="space-y-6"><ModuleWorkspace title="Expenses" description="Review finance expense postings and supporting references." endpoint="/finance/ledger" columns={['module','action','reference_type','reference_id','created_at']} fields={[]} /><WorkflowAction title="Create expense document" endpoint="/finance/documents" fields={[{key:'document_type',label:'Document type',required:true},{key:'document_number',label:'Document number',required:true},{key:'document_date',label:'Document date',type:'date',required:true},{key:'party_id',label:'Party ID'},{key:'amount',label:'Amount',type:'number',required:true},{key:'due_date',label:'Due date',type:'date'}]} /></div>; }

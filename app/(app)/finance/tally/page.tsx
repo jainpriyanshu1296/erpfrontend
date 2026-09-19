@@ -17,8 +17,6 @@ export default function TallySyncPage() {
     setDownloading(type);
     try {
       const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-      const token = localStorage.getItem('erp_token');
-      const slug = localStorage.getItem('erp_org_slug');
 
       const params = new URLSearchParams();
       if (type !== 'masters') {
@@ -27,12 +25,7 @@ export default function TallySyncPage() {
       }
 
       const url = `${base}/finance/tally/${type}.xml?${params.toString()}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'X-Org-Slug': slug || ''
-        }
-      });
+      const res = await fetch(url, { credentials: 'include' });
 
       if (!res.ok) throw new Error('Failed to generate Tally XML');
 

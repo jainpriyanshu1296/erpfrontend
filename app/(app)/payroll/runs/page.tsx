@@ -1,0 +1,3 @@
+'use client';
+import { DomainPage } from '@/components/domain-page';
+export default function Page() { return <DomainPage title='Payroll runs' description='Process payroll periods and monitor approval and payment status.' endpoint='/hr/payroll' columns={['run_number','period_start','period_end','status','total_amount']} fields={[{key:'run_number',label:'Run number',required:true},{key:'period_start',label:'Period start',type:'date',required:true},{key:'period_end',label:'Period end',type:'date',required:true}]} statusOptions={['draft','processed','approved','paid']} detailPath="/payroll/runs" />; }

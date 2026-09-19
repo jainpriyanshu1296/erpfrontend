@@ -1,0 +1,11 @@
+'use client';
+import { FormEvent, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { ErrorState } from '@/components/shared';
+import { inputClass } from '@/components/workflow-card';
+export function JournalForm() {
+  const [form, setForm] = useState({ journal_number: '', journal_date: '', narration: '', debit_account: '', debit: '', credit_account: '', credit: '' });
+  const mutation = useMutation({ mutationFn: () => api.post('/finance/journals', { journal_number: form.journal_number, journal_date: form.journal_date, narration: form.narration, lines: [{ account_id: form.debit_account, debit: Number(form.debit), credit: 0 }, { account_id: form.credit_account, debit: 0, credit: Number(form.credit) }] }), onSuccess: () => setForm({ journal_number: '', journal_date: '', narration: '', debit_account: '', debit: '', credit_account: '', credit: '' }) });
+  return <section className="rounded-xl border bg-white p-5 shadow-sm"><h2 className="font-semibold">Create balanced journal</h2><form onSubmit={(e: FormEvent) => { e.preventDefault(); mutation.mutate(); }} className="mt-4 grid gap-4 sm:grid-cols-2">{[['journal_number','Journal number'],['journal_date','Journal date'],['debit_account','Debit account ID'],['debit','Debit amount'],['credit_account','Credit account ID'],['credit','Credit amount'],['narration','Narration']].map(([key,label]) => <label key={key} className="text-sm font-medium">{label}<input required={key !== 'narration'} type={key.includes('date') ? 'date' : key === 'debit' || key === 'credit' ? 'number' : 'text'} step={key === 'debit' || key === 'credit' ? '0.01' : undefined} value={form[key as keyof typeof form]} onChange={e => setForm({ ...form, [key]: e.target.value })} className={`${inputClass} mt-1`} /></label>)}<button disabled={mutation.isPending} className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white sm:col-span-2">{mutation.isPending ? 'Posting...' : 'Create journal'}</button></form>{mutation.isError && <ErrorState message={mutation.error.message} retry={() => mutation.reset()} />}{mutation.isSuccess && <p className="mt-3 text-sm text-emerald-600">Draft journal created.</p>}</section>;
+}
