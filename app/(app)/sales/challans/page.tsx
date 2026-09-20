@@ -1,197 +1,187 @@
 'use client';
-
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Truck, QrCode, FileText, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { ModuleWorkspace } from '@/components/module-workspace';
-import { QrScannerModal } from '@/components/qr-scanner';
-import { api } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, X, Search, Truck } from 'lucide-react';
+import { api, recordsApi } from '@/lib/api';
+import { Skeleton, ErrorState, EmptyState } from '@/components/shared';
 import { useToast } from '@/components/toast';
 
-interface EwayBillResult {
-  eway_bill_no: string;
-  eway_bill_date: string;
-  valid_until: string;
-  vehicle_number: string;
-  consignment_value: number;
-}
+interface Customer { id: string; customer_code: string; company_name: string; }
+interface Item { id: string; item_code: string; item_name: string; standard_cost: number; }
+interface Warehouse { id: string; warehouse_name: string; name: string; }
+interface Challan { id: string; challan_number: string; customer_id: string; company_name: string; so_number: string; status: string; delivery_date: string; created_at: string; }
+
+const STATUS_COLOR: Record<string, string> = {
+  draft: 'bg-slate-100 text-slate-700', dispatched: 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-700',
+};
 
 export default function Page() {
-  const { showToast } = useToast();
   const client = useQueryClient();
+  const { showToast } = useToast();
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const [customerId, setCustomerId] = useState('');
+  const [soId, setSoId] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [lines, setLines] = useState([{ item_id: '', quantity: '1', rate: '0' }]);
 
-  // E-Way Bill state
-  const [selectedChallanId, setSelectedChallanId] = useState('');
-  const [vehicleNumber, setVehicleNumber] = useState('');
-  const [ewbResult, setEwbResult] = useState<EwayBillResult | null>(null);
-  const [isEwbOpen, setIsEwbOpen] = useState(false);
-
-  // QR Scanner verification state
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [verifyOrderId, setVerifyOrderId] = useState('');
-  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
-
-  const ewbMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedChallanId || !vehicleNumber) {
-        throw new Error('Challan ID and Vehicle Number are required');
-      }
-      const res = await api.post<EwayBillResult>(`/sales/challans/${selectedChallanId}/generate-ewaybill`, {
-        vehicle_number: vehicleNumber
-      });
-      return res.data;
+  const customersQuery = useQuery({ queryKey: ['customers-master'], queryFn: async () => { const r = await api.get<Customer[]>('/masters/customers'); return r.data || []; } });
+  const itemsQuery = useQuery({ queryKey: ['items-master'], queryFn: async () => { const r = await api.get<Item[]>('/masters/items'); return r.data || []; } });
+  const warehousesQuery = useQuery({ queryKey: ['warehouses-master'], queryFn: async () => { const r = await api.get<Warehouse[]>('/masters/warehouses'); return r.data || []; } });
+  const query = useQuery({
+    queryKey: ['delivery-challans', search],
+    queryFn: async () => {
+      const params: Record<string, string> = { limit: '100' };
+      if (search) params.search = search;
+      const r = await recordsApi('/sales/delivery-challans').list(params);
+      return (r.data || []) as Challan[];
     },
-    onSuccess: (data) => {
-      setEwbResult(data);
-      showToast(`E-Way Bill #${data.eway_bill_no} generated (Valid for 72h)`, 'success');
-      client.invalidateQueries({ queryKey: ['/sales/challans'] });
-    },
-    onError: (err: unknown) => {
-      showToast(err instanceof Error ? err.message : 'Failed to generate E-Way Bill', 'error');
-    }
   });
 
-  const handleScanVerified = async (scannedCode: string) => {
-    try {
-      const res = await api.post<{ verified: boolean; message: string }>('/sales/challans/verify-scan', {
-        sales_order_id: verifyOrderId,
-        scanned_code: scannedCode
-      });
-      if (res.data.verified) {
-        setVerificationStatus(`MATCH: ${res.data.message}`);
-        showToast(res.data.message, 'success');
-      } else {
-        setVerificationStatus(`MISMATCH: ${res.data.message}`);
-        showToast(res.data.message, 'error');
-      }
-    } catch {
-      setVerificationStatus(`Item scanned: ${scannedCode}`);
-      showToast(`Scanned: ${scannedCode}`, 'info');
-    }
-  };
+  const createMutation = useMutation({
+    mutationFn: () => api.post('/sales/delivery-challans', {
+      customer_id: customerId, so_id: soId || undefined, warehouse_id: warehouseId,
+      delivery_date: deliveryDate, notes,
+      items: lines.filter(l => l.item_id).map(l => ({ item_id: l.item_id, quantity: Number(l.quantity), rate: Number(l.rate) })),
+    }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['delivery-challans'] });
+      showToast('Delivery challan created', 'success');
+      setOpen(false); setCustomerId(''); setSoId(''); setWarehouseId(''); setDeliveryDate(''); setNotes('');
+      setLines([{ item_id: '', quantity: '1', rate: '0' }]);
+    },
+    onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed', 'error'),
+  });
+
+  const dispatchMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/sales/delivery-challans/${id}/dispatch`, {}),
+    onSuccess: () => { client.invalidateQueries({ queryKey: ['delivery-challans'] }); showToast('Dispatched — inventory decreased', 'success'); },
+    onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed', 'error'),
+  });
+
+  const customers = customersQuery.data || [];
+  const items = itemsQuery.data || [];
+  const warehouses = warehousesQuery.data || [];
+  const rows = query.data || [];
+  const inp = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500';
 
   return (
-    <div className="space-y-6">
-      {/* Quick Action Bar for E-Way Bill & Dispatch Verification */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* 7.2 E-Way Bill Generator Box */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
-              <Truck size={18} />
-            </div>
-            <div>
-              <h2 className="font-bold text-slate-800 text-sm">7.2 NIC E-Way Bill Portal</h2>
-              <p className="text-[11px] text-slate-500">Auto-generate 12-digit E-Way Bill with 72-hour validity</p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-600">Challan ID / Number</label>
-              <input
-                type="text"
-                value={selectedChallanId}
-                onChange={e => setSelectedChallanId(e.target.value)}
-                placeholder="e.g. challan_id or DC-0001"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-slate-600">Vehicle Number (Part-B)</label>
-              <input
-                type="text"
-                value={vehicleNumber}
-                onChange={e => setVehicleNumber(e.target.value.toUpperCase())}
-                placeholder="e.g. MP09AB1234"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-mono uppercase outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <button
-              type="button"
-              disabled={ewbMutation.isPending || !selectedChallanId || !vehicleNumber}
-              onClick={() => ewbMutation.mutate()}
-              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
-            >
-              <Truck size={14} />
-              {ewbMutation.isPending ? 'Generating E-Way Bill...' : 'Generate E-Way Bill'}
-            </button>
-
-            {ewbResult && (
-              <span className="flex items-center gap-1 text-xs font-bold text-emerald-700">
-                <CheckCircle2 size={14} />
-                EWB: {ewbResult.eway_bill_no}
-              </span>
-            )}
-          </div>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Sales</p>
+          <h1 className="text-2xl font-bold text-slate-800">Delivery Challans</h1>
+          <p className="mt-1 text-sm text-slate-500">Dispatch goods to customers. Dispatching decreases inventory.</p>
         </div>
-
-        {/* 5.4 Dispatch Verification Barcode Scanner */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-              <QrCode size={18} />
-            </div>
-            <div>
-              <h2 className="font-bold text-slate-800 text-sm">5.4 Dispatch Verification Scanner</h2>
-              <p className="text-[11px] text-slate-500">Scan box QR before loading to prevent dispatch mismatches</p>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <label className="text-[11px] font-semibold text-slate-600">Sales Order ID for Verification</label>
-            <div className="mt-1 flex gap-2">
-              <input
-                type="text"
-                value={verifyOrderId}
-                onChange={e => setVerifyOrderId(e.target.value)}
-                placeholder="Enter SO ID (e.g. SO-00012)"
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs outline-none focus:border-indigo-500"
-              />
-              <button
-                type="button"
-                onClick={() => setIsScannerOpen(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500"
-              >
-                <QrCode size={14} />
-                Open Camera
-              </button>
-            </div>
-          </div>
-
-          {verificationStatus && (
-            <p className={`mt-3 text-xs font-medium ${verificationStatus.startsWith('MATCH') ? 'text-emerald-700' : 'text-red-600'}`}>
-              {verificationStatus}
-            </p>
-          )}
-        </div>
+        <button onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+          <Plus size={16} /> New Challan
+        </button>
       </div>
 
-      {/* Main Delivery Challan Workspace */}
-      <ModuleWorkspace
-        title="Delivery Challans"
-        description="Manage dispatch challans, e-way bills, vehicle details, and auto-draft tax invoices."
-        endpoint="/sales/challans"
-        columns={['challan_number', 'customer_id', 'vehicle_number', 'eway_bill_no', 'challan_date', 'created_at']}
-        fields={[
-          { key: 'challan_number', label: 'Challan number', required: true },
-          { key: 'customer_id', label: 'Customer', required: true },
-          { key: 'vehicle_number', label: 'Vehicle registration' },
-          { key: 'challan_date', label: 'Challan date', type: 'date', required: true }
-        ]}
-      />
+      <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
+        <Search size={18} className="shrink-0 text-slate-400" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search challans…" className="w-full outline-none text-sm" />
+      </div>
 
-      {/* Camera QR Scanner Modal */}
-      <QrScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScan={handleScanVerified}
-        title="Dispatch Verification Scanner"
-        description="Scan item barcode/QR before vehicle dispatch. The system will verify against SO lines."
-      />
+      {open && (
+        <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-800">New Delivery Challan</h2>
+            <button onClick={() => setOpen(false)}><X size={18} className="text-slate-400" /></button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <label className="block text-xs font-medium text-slate-700">Customer *
+              <select className={`mt-1 ${inp}`} value={customerId} onChange={e => setCustomerId(e.target.value)}>
+                <option value="">Select customer</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.customer_code} — {c.company_name}</option>)}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-slate-700">Warehouse
+              <select className={`mt-1 ${inp}`} value={warehouseId} onChange={e => setWarehouseId(e.target.value)}>
+                <option value="">Select warehouse</option>
+                {warehouses.map(w => <option key={w.id} value={w.id}>{w.warehouse_name || w.name}</option>)}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-slate-700">Delivery Date
+              <input type="date" className={`mt-1 ${inp}`} value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
+            </label>
+            <label className="block text-xs font-medium text-slate-700">Sales Order ID (optional)
+              <input className={`mt-1 ${inp}`} value={soId} onChange={e => setSoId(e.target.value)} placeholder="Link to SO" />
+            </label>
+            <label className="block text-xs font-medium text-slate-700 sm:col-span-2">Notes
+              <input className={`mt-1 ${inp}`} value={notes} onChange={e => setNotes(e.target.value)} />
+            </label>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-slate-700 mb-2">Items *</p>
+            {lines.map((l, i) => (
+              <div key={i} className="grid items-end gap-3 mb-2 sm:grid-cols-4">
+                <label className="block text-xs font-medium text-slate-700 sm:col-span-2">Item
+                  <select className={`mt-1 ${inp}`} value={l.item_id} onChange={e => {
+                    const it = items.find(x => x.id === e.target.value);
+                    setLines(ls => ls.map((ll, j) => j === i ? { ...ll, item_id: e.target.value, rate: String(it?.standard_cost || ll.rate) } : ll));
+                  }}>
+                    <option value="">Select item</option>
+                    {items.map(it => <option key={it.id} value={it.id}>{it.item_code} — {it.item_name}</option>)}
+                  </select>
+                </label>
+                <label className="block text-xs font-medium text-slate-700">Quantity
+                  <input type="number" min="0.001" className={`mt-1 ${inp}`} value={l.quantity} onChange={e => setLines(ls => ls.map((ll, j) => j === i ? { ...ll, quantity: e.target.value } : ll))} />
+                </label>
+                <div className="flex items-end gap-2">
+                  <label className="block flex-1 text-xs font-medium text-slate-700">Rate (₹)
+                    <input type="number" className={`mt-1 ${inp}`} value={l.rate} onChange={e => setLines(ls => ls.map((ll, j) => j === i ? { ...ll, rate: e.target.value } : ll))} />
+                  </label>
+                  <button disabled={lines.length === 1} onClick={() => setLines(ls => ls.filter((_, j) => j !== i))} className="rounded-lg border p-2 text-red-500 disabled:opacity-30 mb-0.5"><X size={14} /></button>
+                </div>
+              </div>
+            ))}
+            <button onClick={() => setLines(ls => [...ls, { item_id: '', quantity: '1', rate: '0' }])} className="rounded-lg border px-3 py-1.5 text-xs font-medium text-slate-600">
+              <Plus size={13} className="inline mr-1" />Add item
+            </button>
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <button onClick={() => setOpen(false)} className="rounded-lg border px-4 py-2 text-sm text-slate-600">Cancel</button>
+            <button disabled={createMutation.isPending || !customerId || !lines.some(l => l.item_id)} onClick={() => createMutation.mutate()}
+              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              {createMutation.isPending ? 'Creating…' : 'Create Challan'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {query.isPending ? <Skeleton className="h-48" /> : query.isError ? <ErrorState message={query.error.message} retry={() => query.refetch()} /> :
+        rows.length === 0 ? <EmptyState title="No delivery challans" description="Create a challan to dispatch goods to a customer." /> : (
+          <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b bg-slate-50 text-xs text-slate-500">
+                <tr>{['Challan #', 'Customer', 'SO Number', 'Delivery Date', 'Status', 'Actions'].map(h => <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {rows.map(row => (
+                  <tr key={row.id} className="border-b last:border-0 hover:bg-indigo-50/40">
+                    <td className="px-4 py-3 font-mono font-semibold text-indigo-700">{row.challan_number}</td>
+                    <td className="px-4 py-3 text-slate-600">{row.company_name || row.customer_id}</td>
+                    <td className="px-4 py-3 text-slate-500">{row.so_number || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-slate-400">{row.delivery_date ? String(row.delivery_date).slice(0, 10) : '—'}</td>
+                    <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLOR[row.status] || 'bg-slate-100 text-slate-600'}`}>{row.status}</span></td>
+                    <td className="px-4 py-3">
+                      {row.status === 'draft' && (
+                        <button onClick={() => dispatchMutation.mutate(row.id)} disabled={dispatchMutation.isPending}
+                          className="flex items-center gap-1 rounded bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-50">
+                          <Truck size={12} /> Dispatch
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
     </div>
   );
 }
