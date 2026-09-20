@@ -1,0 +1,4 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+import { WorkflowAction } from '@/components/workflow-action';
+export default function Page() { return <div className="space-y-6"><ModuleWorkspace title="Corrective Actions" description="Own, verify and close corrective actions raised from NCRs." endpoint="/quality/ncrs" columns={['ncr_number','severity','root_cause','containment_action','corrective_action','owner_id','status']} fields={[]} /><WorkflowAction title="Advance NCR / corrective action" endpoint="/quality/ncrs/{ncr_id}/transition" submitLabel="Apply lifecycle transition" fields={[{key:'ncr_id',label:'NCR ID',required:true},{key:'status',label:'Next status',required:true},{key:'root_cause',label:'Root cause'},{key:'containment_action',label:'Containment action'},{key:'corrective_action',label:'Corrective action'},{key:'verification_note',label:'Verification evidence'}]} /></div>; }

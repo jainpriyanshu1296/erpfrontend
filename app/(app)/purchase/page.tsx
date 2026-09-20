@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Clock, Package, AlertCircle, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -22,11 +21,11 @@ export default function PurchaseDashboard() {
       ]);
 
       return {
-        pending_requisitions: (reqRes.data as any)?.meta?.total || 0,
-        open_purchase_orders: (poRes.data as any)?.meta?.total || 0,
-        pending_receipts: (grnRes.data as any)?.meta?.total || 0,
+        pending_requisitions: reqRes.meta?.total || 0,
+        open_purchase_orders: poRes.meta?.total || 0,
+        pending_receipts: grnRes.meta?.total || 0,
         top_vendors: (vendorRes.data as any) || [],
-        purchase_returns: (returnRes.data as any)?.meta?.total || 0
+        purchase_returns: returnRes.meta?.total || 0
       };
     }
   });
@@ -50,21 +49,11 @@ export default function PurchaseDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <MetricCard icon={<Clock className="text-blue-600" size={24} />} label="Pending Requisitions" value={metrics?.pending_requisitions || 0} href="/purchase/requisitions?status=submitted" />
-        <MetricCard icon={<Package className="text-green-600" size={24} />} label="Open POs" value={metrics?.open_purchase_orders || 0} href="/purchase/orders?status=approved" />
-        <MetricCard icon={<AlertCircle className="text-orange-600" size={24} />} label="Pending GRN" value={metrics?.pending_receipts || 0} href="/purchase/grn?status=draft" />
-        <MetricCard icon={<TrendingUp className="text-purple-600" size={24} />} label="Returns" value={metrics?.purchase_returns || 0} href="/purchase/returns" />
-        <MetricCard icon={<CheckCircle2 className="text-slate-600" size={24} />} label="Vendors" value={metrics?.top_vendors?.length || 0} href="/vendors" />
-      </div>
-
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <ActionButton label="New Requisition" href="/purchase/requisitions" />
-          <ActionButton label="New PO" href="/purchase/orders" />
-          <ActionButton label="New GRN" href="/purchase/grn" />
-          <ActionButton label="New Return" href="/purchase/returns" />
-        </div>
+        <MetricCard icon={<Clock className="text-blue-600" size={24} />} label="Pending Requisitions" value={metrics?.pending_requisitions || 0} />
+        <MetricCard icon={<Package className="text-green-600" size={24} />} label="Open POs" value={metrics?.open_purchase_orders || 0} />
+        <MetricCard icon={<AlertCircle className="text-orange-600" size={24} />} label="Pending GRN" value={metrics?.pending_receipts || 0} />
+        <MetricCard icon={<TrendingUp className="text-purple-600" size={24} />} label="Returns" value={metrics?.purchase_returns || 0} />
+        <MetricCard icon={<CheckCircle2 className="text-slate-600" size={24} />} label="Vendors" value={metrics?.top_vendors?.length || 0} />
       </div>
 
       {metrics?.top_vendors && metrics.top_vendors.length > 0 && (
@@ -90,7 +79,7 @@ export default function PurchaseDashboard() {
                     <td className="px-6 py-3 text-slate-900">{vendor.company_name}</td>
                     <td className="px-6 py-3 text-slate-600">{vendor.contact_person || '-'}</td>
                     <td className="px-6 py-3 text-slate-600">{vendor.email || '-'}</td>
-                    <td className="px-6 py-3"><Link href={`/vendors/${vendor.id}`} className="text-indigo-600 hover:underline">View</Link></td>
+                    <td className="px-6 py-3 text-slate-500">Active</td>
                   </tr>
                 ))}
               </tbody>
@@ -102,10 +91,9 @@ export default function PurchaseDashboard() {
   );
 }
 
-function MetricCard({ icon, label, value, href }: any) {
+function MetricCard({ icon, label, value }: any) {
   return (
-    <Link href={href}>
-      <div className="rounded-lg border bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-indigo-200">
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
@@ -114,16 +102,5 @@ function MetricCard({ icon, label, value, href }: any) {
           <div className="rounded-lg bg-slate-50 p-2">{icon}</div>
         </div>
       </div>
-    </Link>
-  );
-}
-
-function ActionButton({ label, href }: any) {
-  return (
-    <Link href={href}>
-      <button className="w-full rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 transition-all hover:bg-indigo-100 hover:border-indigo-300">
-        {label}
-      </button>
-    </Link>
   );
 }

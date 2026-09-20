@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, FileText, ShoppingCart, Truck, RotateCcw, Users } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -22,13 +21,11 @@ export default function SalesDashboard() {
       ]);
 
       return {
-        open_quotations: (quotRes.data as any)?.meta?.total || 0,
-        open_sales_orders: (soRes.data as any)?.meta?.total || 0,
-        pending_dispatch: (dcRes.data as any)?.meta?.total || 0,
-        outstanding_receivables: 0,
-        sales_this_month: 0,
+        open_quotations: quotRes.meta?.total || 0,
+        open_sales_orders: soRes.meta?.total || 0,
+        pending_dispatch: dcRes.meta?.total || 0,
         top_customers: (custRes.data as any) || [],
-        sales_returns: (returnRes.data as any)?.meta?.total || 0
+        sales_returns: returnRes.meta?.total || 0
       };
     }
   });
@@ -52,21 +49,11 @@ export default function SalesDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <MetricCard icon={<FileText className="text-blue-600" size={24} />} label="Open Quotations" value={metrics?.open_quotations || 0} href="/sales/quotations?status=draft" />
-        <MetricCard icon={<ShoppingCart className="text-green-600" size={24} />} label="Sales Orders" value={metrics?.open_sales_orders || 0} href="/sales/orders?status=confirmed" />
-        <MetricCard icon={<Truck className="text-orange-600" size={24} />} label="Pending Dispatch" value={metrics?.pending_dispatch || 0} href="/sales/challans?status=draft" />
-        <MetricCard icon={<RotateCcw className="text-purple-600" size={24} />} label="Returns" value={metrics?.sales_returns || 0} href="/sales/returns" />
-        <MetricCard icon={<Users className="text-slate-600" size={24} />} label="Customers" value={metrics?.top_customers?.length || 0} href="/customers" />
-      </div>
-
-      <div className="rounded-lg border bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <ActionButton label="New Quotation" href="/sales/quotations" />
-          <ActionButton label="New Sales Order" href="/sales/orders" />
-          <ActionButton label="New Dispatch" href="/sales/challans" />
-          <ActionButton label="New Return" href="/sales/returns" />
-        </div>
+        <MetricCard icon={<FileText className="text-blue-600" size={24} />} label="Open Quotations" value={metrics?.open_quotations || 0} />
+        <MetricCard icon={<ShoppingCart className="text-green-600" size={24} />} label="Sales Orders" value={metrics?.open_sales_orders || 0} />
+        <MetricCard icon={<Truck className="text-orange-600" size={24} />} label="Pending Dispatch" value={metrics?.pending_dispatch || 0} />
+        <MetricCard icon={<RotateCcw className="text-purple-600" size={24} />} label="Returns" value={metrics?.sales_returns || 0} />
+        <MetricCard icon={<Users className="text-slate-600" size={24} />} label="Customers" value={metrics?.top_customers?.length || 0} />
       </div>
 
       {metrics?.top_customers && metrics.top_customers.length > 0 && (
@@ -92,7 +79,7 @@ export default function SalesDashboard() {
                     <td className="px-6 py-3 text-slate-900">{customer.company_name}</td>
                     <td className="px-6 py-3 text-slate-600">{customer.contact_person || '-'}</td>
                     <td className="px-6 py-3 text-slate-600">{customer.email || '-'}</td>
-                    <td className="px-6 py-3"><Link href={`/customers/${customer.id}`} className="text-indigo-600 hover:underline">View</Link></td>
+                    <td className="px-6 py-3 text-slate-500">Active</td>
                   </tr>
                 ))}
               </tbody>
@@ -104,10 +91,9 @@ export default function SalesDashboard() {
   );
 }
 
-function MetricCard({ icon, label, value, href }: any) {
+function MetricCard({ icon, label, value }: any) {
   return (
-    <Link href={href}>
-      <div className="rounded-lg border bg-white p-4 shadow-sm transition-all hover:shadow-md hover:border-indigo-200">
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
@@ -116,16 +102,5 @@ function MetricCard({ icon, label, value, href }: any) {
           <div className="rounded-lg bg-slate-50 p-2">{icon}</div>
         </div>
       </div>
-    </Link>
-  );
-}
-
-function ActionButton({ label, href }: any) {
-  return (
-    <Link href={href}>
-      <button className="w-full rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 transition-all hover:bg-indigo-100 hover:border-indigo-300">
-        {label}
-      </button>
-    </Link>
   );
 }

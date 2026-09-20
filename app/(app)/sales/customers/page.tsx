@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Customers" description="Maintain customers, tax identity, credit limit and payment terms." endpoint="/customers" detailPath="/customers" columns={['customer_code','company_name','contact_person','phone','gstin','payment_terms','credit_limit','is_active']} fields={[{key:'customer_code',label:'Customer code',required:true},{key:'company_name',label:'Company name',required:true},{key:'contact_person',label:'Contact person'},{key:'phone',label:'Phone'},{key:'email',label:'Email'},{key:'gstin',label:'GSTIN'},{key:'payment_terms',label:'Payment terms (days)',type:'number'}]} />; }

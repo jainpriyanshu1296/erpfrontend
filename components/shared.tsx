@@ -16,13 +16,13 @@ export function ErrorState({ message, retry }: { message: string; retry: () => v
 
 const nav = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: 'Workspace' },
-  { key: 'purchase', label: 'Purchase', path: '/purchase/requisitions', icon: ShoppingCart, section: 'Inventory & purchasing' },
+  { key: 'purchase', label: 'Purchase', path: '/purchase', icon: ShoppingCart, section: 'Inventory & purchasing' },
   { key: 'vendors', label: 'Vendors', path: '/vendors', icon: Users, section: 'Inventory & purchasing' },
   { key: 'inventory', label: 'Inventory', path: '/inventory/stock', icon: Package, section: 'Inventory & purchasing' },
   { key: 'production', label: 'Production', path: '/production/work-orders', icon: Factory },
   { key: 'jobwork', label: 'Job Work', path: '/jobwork/challans', icon: Box },
   { key: 'quality', label: 'Quality', path: '/quality', icon: FileBarChart },
-  { key: 'sales', label: 'Sales & Dispatch', path: '/sales/quotations', icon: ShoppingCart },
+  { key: 'sales', label: 'Sales & Dispatch', path: '/sales', icon: ShoppingCart },
   { key: 'customers', label: 'Customers', path: '/customers', icon: Users, section: 'Sales & dispatch' },
   { key: 'hr', label: 'HR & Payroll', path: '/hr', icon: Users },
   { key: 'finance', label: 'Finance', path: '/finance', icon: Wallet },

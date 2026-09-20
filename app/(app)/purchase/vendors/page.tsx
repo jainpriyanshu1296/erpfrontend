@@ -1,0 +1,3 @@
+'use client';
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Vendors" description="Maintain approved purchasing suppliers and commercial terms." endpoint="/vendors" detailPath="/vendors" columns={['vendor_code','company_name','contact_person','phone','gstin','payment_terms','is_active']} fields={[{key:'vendor_code',label:'Vendor code',required:true},{key:'company_name',label:'Company name',required:true},{key:'contact_person',label:'Contact person'},{key:'phone',label:'Phone'},{key:'email',label:'Email'},{key:'gstin',label:'GSTIN'},{key:'payment_terms',label:'Payment terms (days)',type:'number'}]} />; }
