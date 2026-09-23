@@ -45,7 +45,7 @@ export default function Page() {
 
   const createMutation = useMutation({
     mutationFn: () => api.post('/sales/returns', {
-      customer_id: customerId, so_id: soId || undefined, warehouse_id: warehouseId, reason, notes,
+      customer_id: customerId, so_id: soId, warehouse_id: warehouseId, reason, notes,
       items: lines.filter(l => l.item_id).map(l => ({ item_id: l.item_id, return_qty: Number(l.return_qty), rate: Number(l.rate) })),
     }),
     onSuccess: () => {
@@ -106,8 +106,8 @@ export default function Page() {
                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.warehouse_name || w.name}</option>)}
               </select>
             </label>
-            <label className="block text-xs font-medium text-slate-700">Sales Order ID (optional)
-              <input className={`mt-1 ${inp}`} value={soId} onChange={e => setSoId(e.target.value)} placeholder="Link to SO" />
+            <label className="block text-xs font-medium text-slate-700">Sales Order ID *
+              <input required className={`mt-1 ${inp}`} value={soId} onChange={e => setSoId(e.target.value)} placeholder="Link to dispatched SO" />
             </label>
             <label className="block text-xs font-medium text-slate-700">Reason *
               <input className={`mt-1 ${inp}`} value={reason} onChange={e => setReason(e.target.value)} />
@@ -143,7 +143,7 @@ export default function Page() {
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t">
             <button onClick={() => setOpen(false)} className="rounded-lg border px-4 py-2 text-sm text-slate-600">Cancel</button>
-            <button disabled={createMutation.isPending || !customerId || !reason || !lines.some(l => l.item_id)} onClick={() => createMutation.mutate()}
+            <button disabled={createMutation.isPending || !customerId || !soId || !warehouseId || !reason || !lines.some(l => l.item_id)} onClick={() => createMutation.mutate()}
               className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
               {createMutation.isPending ? 'Creating…' : 'Create Return'}
             </button>

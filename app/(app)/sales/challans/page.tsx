@@ -46,7 +46,7 @@ export default function Page() {
 
   const createMutation = useMutation({
     mutationFn: () => api.post('/sales/delivery-challans', {
-      customer_id: customerId, so_id: soId || undefined, warehouse_id: warehouseId,
+      customer_id: customerId, so_id: soId, warehouse_id: warehouseId,
       delivery_date: deliveryDate, notes,
       items: lines.filter(l => l.item_id).map(l => ({ item_id: l.item_id, quantity: Number(l.quantity), rate: Number(l.rate) })),
     }),
@@ -102,7 +102,7 @@ export default function Page() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.customer_code} — {c.company_name}</option>)}
               </select>
             </label>
-            <label className="block text-xs font-medium text-slate-700">Warehouse
+            <label className="block text-xs font-medium text-slate-700">Warehouse *
               <select className={`mt-1 ${inp}`} value={warehouseId} onChange={e => setWarehouseId(e.target.value)}>
                 <option value="">Select warehouse</option>
                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.warehouse_name || w.name}</option>)}
@@ -111,8 +111,8 @@ export default function Page() {
             <label className="block text-xs font-medium text-slate-700">Delivery Date
               <input type="date" className={`mt-1 ${inp}`} value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} />
             </label>
-            <label className="block text-xs font-medium text-slate-700">Sales Order ID (optional)
-              <input className={`mt-1 ${inp}`} value={soId} onChange={e => setSoId(e.target.value)} placeholder="Link to SO" />
+            <label className="block text-xs font-medium text-slate-700">Sales Order ID *
+              <input required className={`mt-1 ${inp}`} value={soId} onChange={e => setSoId(e.target.value)} placeholder="Link to confirmed SO" />
             </label>
             <label className="block text-xs font-medium text-slate-700 sm:col-span-2">Notes
               <input className={`mt-1 ${inp}`} value={notes} onChange={e => setNotes(e.target.value)} />
@@ -148,7 +148,7 @@ export default function Page() {
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t">
             <button onClick={() => setOpen(false)} className="rounded-lg border px-4 py-2 text-sm text-slate-600">Cancel</button>
-            <button disabled={createMutation.isPending || !customerId || !lines.some(l => l.item_id)} onClick={() => createMutation.mutate()}
+            <button disabled={createMutation.isPending || !customerId || !soId || !warehouseId || !lines.some(l => l.item_id)} onClick={() => createMutation.mutate()}
               className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
               {createMutation.isPending ? 'Creating…' : 'Create Challan'}
             </button>
