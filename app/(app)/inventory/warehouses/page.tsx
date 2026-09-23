@@ -5,6 +5,7 @@ import { Plus, X, Search, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Skeleton, ErrorState, EmptyState } from '@/components/shared';
 import { useToast } from '@/components/toast';
+import { Pagination } from '@/components/pagination';
 
 interface Warehouse { id: string; warehouse_code: string; warehouse_name: string; address: string; city: string; is_default: number; is_active: number; }
 
@@ -12,6 +13,10 @@ export default function Page() {
   const client = useQueryClient();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [page,setPage]=useState(1);
+  const [limit,setLimit]=useState(20);
+  const [sort,setSort]=useState('warehouse_name');
+  const [active,setActive]=useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
   const [warehouseCode, setWarehouseCode] = useState('');
@@ -19,17 +24,18 @@ export default function Page() {
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
   const [isDefault, setIsDefault] = useState(false);
+  const [isActive,setIsActive]=useState(true);
 
   const query = useQuery({
-    queryKey: ['inventory-warehouses'],
-    queryFn: async () => { const r = await api.get<Warehouse[]>('/inventory/warehouses'); return r.data || []; },
+    queryKey: ['inventory-warehouses',search,page,limit,sort,active],
+    queryFn: async () => { const params=new URLSearchParams({search,page:String(page),limit:String(limit),sort});if(active) params.set('is_active',active);const r = await api.get<Warehouse[]>(`/inventory/warehouses?${params}`); return {rows:r.data || [],total:Number(r.meta?.total || 0)}; },
   });
 
   const resetForm = () => { setWarehouseCode(''); setWarehouseName(''); setAddress(''); setCity(''); setIsDefault(false); setEditing(null); setOpen(false); };
 
   const openEdit = (w: Warehouse) => {
     setEditing(w); setWarehouseCode(w.warehouse_code || ''); setWarehouseName(w.warehouse_name || '');
-    setAddress(w.address || ''); setCity(w.city || ''); setIsDefault(Boolean(w.is_default)); setOpen(true);
+    setAddress(w.address || ''); setCity(w.city || ''); setIsDefault(Boolean(w.is_default)); setIsActive(Boolean(w.is_active)); setOpen(true);
   };
 
   const createMutation = useMutation({
@@ -39,15 +45,12 @@ export default function Page() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: () => api.put(`/inventory/warehouses/${editing!.id}`, { warehouse_code: warehouseCode, warehouse_name: warehouseName, address, city, is_default: isDefault ? 1 : 0 }),
+    mutationFn: () => api.put(`/inventory/warehouses/${editing!.id}`, { warehouse_code: warehouseCode, warehouse_name: warehouseName, address, city, is_default: isDefault ? 1 : 0,is_active:isActive?1:0 }),
     onSuccess: () => { client.invalidateQueries({ queryKey: ['inventory-warehouses'] }); showToast('Warehouse updated', 'success'); resetForm(); },
     onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed', 'error'),
   });
 
-  const rows = (query.data || []).filter(r =>
-    !search || r.warehouse_name?.toLowerCase().includes(search.toLowerCase()) ||
-    r.warehouse_code?.toLowerCase().includes(search.toLowerCase())
-  );
+  const rows = query.data?.rows || [];
   const inp = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500';
 
   return (
@@ -65,7 +68,9 @@ export default function Page() {
 
       <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search warehouses…" className="w-full outline-none text-sm" />
+        <input value={search} onChange={e => {setSearch(e.target.value);setPage(1);}} placeholder="Search warehouses…" className="w-full outline-none text-sm" />
+        <select aria-label="Active state" value={active} onChange={e=>{setActive(e.target.value);setPage(1);}}><option value="">All states</option><option value="1">Active</option><option value="0">Inactive</option></select>
+        <select aria-label="Sort warehouses" value={sort} onChange={e=>{setSort(e.target.value);setPage(1);}}><option value="warehouse_name">Name</option><option value="warehouse_code">Code</option><option value="city">City</option></select>
       </div>
 
       {open && (
@@ -92,6 +97,7 @@ export default function Page() {
             <input type="checkbox" checked={isDefault} onChange={e => setIsDefault(e.target.checked)} className="rounded" />
             Set as default warehouse
           </label>
+          {editing && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={e=>setIsActive(e.target.checked)} />Active warehouse</label>}
           <div className="flex justify-end gap-2 pt-2 border-t">
             <button onClick={resetForm} className="rounded-lg border px-4 py-2 text-sm text-slate-600">Cancel</button>
             <button
@@ -131,6 +137,7 @@ export default function Page() {
             </table>
           </div>
         )}
+      {query.isSuccess && <Pagination page={page} limit={limit} total={query.data.total} busy={query.isFetching} onPage={setPage} onLimit={value=>{setLimit(value);setPage(1);}} />}
     </div>
   );
 }

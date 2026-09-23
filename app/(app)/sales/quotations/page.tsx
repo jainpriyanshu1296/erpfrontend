@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Pagination } from '@/components/pagination';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Search, ArrowRight } from 'lucide-react';
 import { api, recordsApi } from '@/lib/api';
@@ -20,6 +21,8 @@ export default function Page() {
   const client = useQueryClient();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [open, setOpen] = useState(false);
   const [customerId, setCustomerId] = useState('');
   const [validUntil, setValidUntil] = useState('');
@@ -29,12 +32,12 @@ export default function Page() {
   const customersQuery = useQuery({ queryKey: ['customers-master'], queryFn: async () => { const r = await api.get<Customer[]>('/masters/customers'); return r.data || []; } });
   const itemsQuery = useQuery({ queryKey: ['items-master'], queryFn: async () => { const r = await api.get<Item[]>('/masters/items'); return r.data || []; } });
   const query = useQuery({
-    queryKey: ['quotations', search],
+    queryKey: ['quotations', search, page, limit],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: '100' };
+      const params: Record<string, string> = { page: String(page), limit: String(limit) };
       if (search) params.search = search;
       const r = await recordsApi('/sales/quotations').list(params);
-      return (r.data || []) as Quotation[];
+      return { rows: (r.data || []) as Quotation[], total: Number(r.meta?.total || 0) };
     },
   });
 
@@ -65,10 +68,15 @@ export default function Page() {
     onSuccess: () => { client.invalidateQueries({ queryKey: ['quotations'] }); showToast('Converted to Sales Order', 'success'); },
     onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed', 'error'),
   });
+  const statusMutation = useMutation({
+    mutationFn: ({id,status}:{id:string;status:string}) => api.put(`/sales/quotations/${id}/status`, {status}),
+    onSuccess: () => { client.invalidateQueries({queryKey:['quotations']}); showToast('Quotation status updated','success'); },
+    onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed','error'),
+  });
 
   const customers = customersQuery.data || [];
   const items = itemsQuery.data || [];
-  const rows = query.data || [];
+  const rows = query.data?.rows || [];
   const inp = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500';
 
   return (
@@ -86,7 +94,7 @@ export default function Page() {
 
       <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search quotations…" className="w-full outline-none text-sm" />
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search quotations…" className="w-full outline-none text-sm" />
       </div>
 
       {open && (
@@ -167,12 +175,16 @@ export default function Page() {
                     <td className="px-4 py-3 text-xs text-slate-400">{row.valid_until ? String(row.valid_until).slice(0, 10) : '—'}</td>
                     <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLOR[row.status] || 'bg-slate-100 text-slate-600'}`}>{row.status}</span></td>
                     <td className="px-4 py-3">
-                      {row.status === 'draft' && (
+                      <div className="flex flex-wrap gap-1">
+                      {row.status === 'draft' && <button onClick={() => statusMutation.mutate({id:row.id,status:'sent'})} disabled={statusMutation.isPending} className="rounded bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">Mark sent</button>}
+                      {row.status === 'sent' && <><button onClick={() => statusMutation.mutate({id:row.id,status:'accepted'})} disabled={statusMutation.isPending} className="rounded bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">Accept</button><button onClick={() => statusMutation.mutate({id:row.id,status:'rejected'})} disabled={statusMutation.isPending} className="rounded bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Reject</button></>}
+                      {row.status === 'accepted' && (
                         <button onClick={() => convertMutation.mutate(row.id)} disabled={convertMutation.isPending}
                           className="flex items-center gap-1 rounded bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-50">
                           <ArrowRight size={12} /> Convert to SO
                         </button>
                       )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -180,6 +192,7 @@ export default function Page() {
             </table>
           </div>
         )}
+      {query.isSuccess && <Pagination page={page} limit={limit} total={query.data.total} busy={query.isFetching} onPage={setPage} onLimit={value => { setLimit(value); setPage(1); }} />}
     </div>
   );
 }

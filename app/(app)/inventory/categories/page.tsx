@@ -1,0 +1,2 @@
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Item Groups" description="Create and rename groups, or deactivate groups while retaining item history." endpoint="/inventory/categories" editable columns={['category','is_active']} fields={[{key:'category',label:'Category',required:true},{key:'is_active',label:'Active',type:'select',options:[{value:'1',label:'Active'},{value:'0',label:'Inactive'}]}]} />; }

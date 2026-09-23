@@ -1,0 +1,2 @@
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Production Settings" description="Configure production warehouse and material controls." endpoint="/production/settings" columns={['setting_key','setting_value','updated_at']} fields={[{key:'setting_key',label:'Setting',type:'select',options:['default_warehouse','require_material_issue','scrap_tolerance_percent'],required:true},{key:'setting_value',label:'Value',required:true}]} />; }

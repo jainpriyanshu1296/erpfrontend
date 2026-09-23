@@ -1,0 +1,2 @@
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Units of Measure" description="Maintain units used by Item Master and operational documents." endpoint="/inventory/uom" editable columns={['uom_code','uom_name','is_active']} fields={[{key:'uom_code',label:'Code',required:true},{key:'uom_name',label:'Name',required:true},{key:'is_active',label:'Active',type:'select',options:[{value:'1',label:'Active'},{value:'0',label:'Inactive'}]}]} />; }

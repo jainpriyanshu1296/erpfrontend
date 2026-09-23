@@ -1,0 +1,2 @@
+import { ModuleWorkspace } from '@/components/module-workspace';
+export default function Page() { return <ModuleWorkspace title="Inventory Settings" description="Warehouse and stock tracking configuration." endpoint="/inventory/settings" columns={['setting_key','setting_value','updated_at']} fields={[{key:'setting_key',label:'Setting',type:'select',options:['default_warehouse','stock_count_frequency_days','batch_tracking_enabled','serial_tracking_enabled'],required:true},{key:'setting_value',label:'Value',required:true}]} />; }

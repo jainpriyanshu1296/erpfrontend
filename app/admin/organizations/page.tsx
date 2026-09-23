@@ -1,4 +1,5 @@
 'use client';
+import { FieldErrors } from '@/components/field-errors';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp, Plus, X, Building2 } from 'lucide-react';
@@ -8,7 +9,7 @@ import { useToast } from '@/components/toast';
 
 interface Org {
   id: string; slug: string; company_name: string; owner_email: string;
-  owner_phone?: string; plan: string; is_active: number; is_suspended: number; created_at: string;
+  owner_phone?: string; plan: string; status: string; is_active: number; is_suspended: number; created_at: string;
 }
 interface OrgModule {
   id: number; module_key: string; module_name: string; min_plan: string; is_active: number;
@@ -22,11 +23,11 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
   const { showToast } = useToast();
   const [form, setForm] = useState({
     company_name: '', owner_name: '', owner_email: '', owner_phone: '',
-    slug: '', password: '', plan: 'free',
+    slug: '', password: '', plan: 'free', duration_months: '1',
   });
 
   const mutation = useMutation({
-    mutationFn: () => adminApi.post('/admin/organizations', form),
+    mutationFn: () => adminApi.post('/admin/organizations', {...form,duration_months:Number(form.duration_months)}),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ['admin-orgs'] });
       showToast('Organization created successfully', 'success');
@@ -61,42 +62,47 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
             <label className="block text-xs font-medium text-slate-400">
               Company Name *
               <input className={`mt-1 ${inp}`} value={form.company_name}
-                onChange={e => handleCompanyName(e.target.value)} placeholder="Acme Manufacturing Pvt Ltd" />
+                onChange={e => handleCompanyName(e.target.value)} placeholder="Acme Manufacturing Pvt Ltd" /><FieldErrors error={mutation.error} field="company_name" />
             </label>
             <label className="block text-xs font-medium text-slate-400">
               Org Slug * <span className="text-slate-500">(URL identifier)</span>
               <input className={`mt-1 ${inp}`} value={form.slug}
                 onChange={e => set('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                placeholder="acme-manufacturing" />
+                placeholder="acme-manufacturing" /><FieldErrors error={mutation.error} field="slug" />
             </label>
             <label className="block text-xs font-medium text-slate-400">
               Owner Name
               <input className={`mt-1 ${inp}`} value={form.owner_name}
-                onChange={e => set('owner_name', e.target.value)} placeholder="Ramesh Kumar" />
+                onChange={e => set('owner_name', e.target.value)} placeholder="Ramesh Kumar" /><FieldErrors error={mutation.error} field="owner_name" />
             </label>
             <label className="block text-xs font-medium text-slate-400">
               Owner Email *
               <input type="email" className={`mt-1 ${inp}`} value={form.owner_email}
-                onChange={e => set('owner_email', e.target.value)} placeholder="ramesh@acme.com" />
+                onChange={e => set('owner_email', e.target.value)} placeholder="ramesh@acme.com" /><FieldErrors error={mutation.error} field="owner_email" />
             </label>
             <label className="block text-xs font-medium text-slate-400">
               Owner Phone
               <input type="tel" className={`mt-1 ${inp}`} value={form.owner_phone}
-                onChange={e => set('owner_phone', e.target.value)} placeholder="+91 98260 12345" />
+                onChange={e => set('owner_phone', e.target.value)} placeholder="+91 98260 12345" /><FieldErrors error={mutation.error} field="owner_phone" />
             </label>
             <label className="block text-xs font-medium text-slate-400">
               Plan
               <select className={`mt-1 ${inp}`} value={form.plan} onChange={e => set('plan', e.target.value)}>
                 {PLANS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
-              </select>
+              </select><FieldErrors error={mutation.error} field="plan" />
+            </label>
+            <label className="block text-xs font-medium text-slate-400 sm:col-span-2">
+              Billing duration (months)
+              <input type="number" min="1" max="120" className={`mt-1 ${inp}`} value={form.duration_months} onChange={e=>set('duration_months',e.target.value)} /><FieldErrors error={mutation.error} field="duration_months" />
             </label>
             <label className="block text-xs font-medium text-slate-400 sm:col-span-2">
               Admin Password * <span className="text-slate-500">(owner login password)</span>
               <input type="password" className={`mt-1 ${inp}`} value={form.password}
-                onChange={e => set('password', e.target.value)} placeholder="Min 8 characters" />
+                onChange={e => set('password', e.target.value)} placeholder="Min 8 characters" /><FieldErrors error={mutation.error} field="password" />
             </label>
           </div>
 
+          {mutation.isError && <p role="alert" className="text-sm text-red-300">{mutation.error instanceof Error ? mutation.error.message : 'Unable to create organization'}</p>}
           <div className="rounded-lg border border-slate-700 bg-slate-900 p-3 text-xs text-slate-400">
             <p className="font-semibold text-slate-300 mb-1">What happens on create:</p>
             <ul className="space-y-0.5 list-disc list-inside">
@@ -147,6 +153,11 @@ function OrgRow({ org }: { org: Org }) {
     onSuccess: () => { client.invalidateQueries({ queryKey: ['admin-orgs'] }); showToast('Organization activated', 'success'); },
     onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed', 'error'),
   });
+  const retryMutation=useMutation({
+    mutationFn:(id:string)=>adminApi.post(`/admin/organizations/${id}/retry-provisioning`,{}),
+    onSuccess:()=>{client.invalidateQueries({queryKey:['admin-orgs']});showToast('Organization provisioned','success');},
+    onError:(e:unknown)=>showToast(e instanceof Error?e.message:'Provisioning retry failed','error'),
+  });
 
   const planMutation = useMutation({
     mutationFn: ({ id, plan }: { id: string; plan: string }) =>
@@ -186,9 +197,11 @@ function OrgRow({ org }: { org: Org }) {
           {PLANS.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
         </select>
 
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${suspended ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
-          {suspended ? 'Suspended' : 'Active'}
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${suspended || org.status==='pending' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>
+          {suspended ? 'Suspended' : org.status}
         </span>
+
+        {org.status==='pending' && <button onClick={()=>retryMutation.mutate(org.id)} disabled={retryMutation.isPending} className="rounded border border-amber-600 px-3 py-1 text-xs text-amber-300 disabled:opacity-50">Retry provisioning</button>}
 
         {suspended ? (
           <button onClick={() => activateMutation.mutate(org.id)} disabled={activateMutation.isPending}

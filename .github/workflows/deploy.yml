@@ -40,6 +40,8 @@ jobs:
           cp -R .next/static .next/standalone/.next/
 
           echo "==> Restarting PM2 application"
+          export PORT=3002
+          export HOSTNAME=0.0.0.0
           /opt/homebrew/bin/pm2 restart erp-frontend --update-env
 
           echo "==> Deployment completed"

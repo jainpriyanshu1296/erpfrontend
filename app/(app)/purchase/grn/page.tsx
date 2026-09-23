@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Pagination } from '@/components/pagination';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Search, Upload } from 'lucide-react';
 import { api, recordsApi } from '@/lib/api';
@@ -19,6 +20,8 @@ export default function Page() {
   const client = useQueryClient();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [open, setOpen] = useState(false);
   const [vendorId, setVendorId] = useState('');
   const [poId, setPoId] = useState('');
@@ -31,12 +34,12 @@ export default function Page() {
   const itemsQuery = useQuery({ queryKey: ['items-master'], queryFn: async () => { const r = await api.get<Item[]>('/masters/items'); return r.data || []; } });
   const warehousesQuery = useQuery({ queryKey: ['warehouses-master'], queryFn: async () => { const r = await api.get<Warehouse[]>('/masters/warehouses'); return r.data || []; } });
   const query = useQuery({
-    queryKey: ['grn-list', search],
+    queryKey: ['grn-list', search, page, limit],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: '100' };
+      const params: Record<string, string> = { page: String(page), limit: String(limit) };
       if (search) params.search = search;
       const r = await recordsApi('/purchase/receipts').list(params);
-      return (r.data || []) as GRN[];
+      return { rows: (r.data || []) as GRN[], total: Number(r.meta?.total || 0) };
     },
   });
 
@@ -57,14 +60,14 @@ export default function Page() {
 
   const postMutation = useMutation({
     mutationFn: (id: string) => api.post(`/purchase/receipts/${id}/post`, {}),
-    onSuccess: () => { client.invalidateQueries({ queryKey: ['grn-list'] }); showToast('GRN posted — inventory updated', 'success'); },
+    onSuccess: () => { client.invalidateQueries({ queryKey: ['grn-list'] }); showToast('GRN posted — awaiting Incoming QC', 'success'); },
     onError: (e: unknown) => showToast(e instanceof Error ? e.message : 'Failed', 'error'),
   });
 
   const vendors = vendorsQuery.data || [];
   const items = itemsQuery.data || [];
   const warehouses = warehousesQuery.data || [];
-  const rows = query.data || [];
+  const rows = query.data?.rows || [];
   const inp = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500';
 
   return (
@@ -73,7 +76,7 @@ export default function Page() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Purchase</p>
           <h1 className="text-2xl font-bold text-slate-800">Goods Receipt Notes</h1>
-          <p className="mt-1 text-sm text-slate-500">Receive goods and post to inventory.</p>
+          <p className="mt-1 text-sm text-slate-500">Post goods receipts, then release accepted stock through Incoming QC.</p>
         </div>
         <button onClick={() => setOpen(true)} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
           <Plus size={16} /> New GRN
@@ -82,7 +85,7 @@ export default function Page() {
 
       <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search GRNs…" className="w-full outline-none text-sm" />
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search GRNs…" className="w-full outline-none text-sm" />
       </div>
 
       {open && (
@@ -173,7 +176,7 @@ export default function Page() {
                       {row.status === 'draft' && (
                         <button onClick={() => postMutation.mutate(row.id)} disabled={postMutation.isPending}
                           className="flex items-center gap-1 rounded bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-50">
-                          <Upload size={12} /> Post to Inventory
+                          <Upload size={12} /> Post receipt
                         </button>
                       )}
                     </td>
@@ -183,6 +186,7 @@ export default function Page() {
             </table>
           </div>
         )}
+      {query.isSuccess && <Pagination page={page} limit={limit} total={query.data.total} busy={query.isFetching} onPage={setPage} onLimit={value => { setLimit(value); setPage(1); }} />}
     </div>
   );
 }

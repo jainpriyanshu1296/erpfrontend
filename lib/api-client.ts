@@ -50,7 +50,7 @@ class ApiClient {
       window.location.href = '/login';
       throw new Error('Session expired. Please login again.');
     }
-    if (!response.ok) throw new Error(body.message || 'Request failed');
+    if (!response.ok) throw Object.assign(new Error(body.message || 'Request failed'), { code: body.error, details: body.details, status: response.status });
     return body as ApiResponse<T>;
   }
 

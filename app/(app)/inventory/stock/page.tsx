@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Package } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Skeleton, ErrorState, EmptyState } from '@/components/shared';
+import { Pagination } from '@/components/pagination';
 
 interface StockRow {
   item_id: string; warehouse_id: string; current_qty: number; avg_rate: number;
@@ -13,19 +14,17 @@ interface StockRow {
 
 export default function StockPage() {
   const [search, setSearch] = useState('');
+  const [page,setPage] = useState(1);
+  const [limit,setLimit] = useState(20);
   const query = useQuery({
-    queryKey: ['inventory-stock'],
-    queryFn: async () => { const r = await api.get<StockRow[]>('/inventory/stock', { limit: '200' }); return r.data || []; },
+    queryKey: ['inventory-stock',search,page,limit],
+    queryFn: () => api.get<StockRow[]>('/inventory/stock', { search,page:String(page),limit:String(limit) }),
   });
 
   if (query.isPending) return <Skeleton className="h-72" />;
   if (query.isError) return <ErrorState message={query.error.message} retry={() => query.refetch()} />;
 
-  const rows = (query.data || []).filter(r =>
-    !search || r.item_name?.toLowerCase().includes(search.toLowerCase()) ||
-    r.item_code?.toLowerCase().includes(search.toLowerCase()) ||
-    r.warehouse_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const rows = query.data.data || [];
 
   const totalValue = rows.reduce((s, r) => s + Number(r.total_value || 0), 0);
 
@@ -39,22 +38,22 @@ export default function StockPage() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Total SKUs</p>
+          <p className="text-xs text-slate-500">Stock rows on this page</p>
           <p className="mt-1 text-2xl font-bold text-slate-800">{rows.length}</p>
         </div>
         <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <p className="text-xs text-slate-500">Total Inventory Value</p>
+          <p className="text-xs text-slate-500">Inventory value on this page</p>
           <p className="mt-1 text-2xl font-bold text-indigo-700">₹{totalValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
         </div>
         <div className="rounded-xl border bg-white p-4 shadow-sm col-span-2 sm:col-span-1">
-          <p className="text-xs text-slate-500">Low Stock Items</p>
+          <p className="text-xs text-slate-500">Zero stock rows on this page</p>
           <p className="mt-1 text-2xl font-bold text-red-600">{rows.filter(r => Number(r.current_qty) <= 0).length}</p>
         </div>
       </div>
 
       <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)}
+        <input value={search} onChange={e => {setSearch(e.target.value);setPage(1);}}
           placeholder="Search by item name, code or warehouse..." className="w-full outline-none text-sm" />
       </div>
 
@@ -90,6 +89,7 @@ export default function StockPage() {
           </table>
         </div>
       )}
+      <Pagination page={page} limit={limit} total={Number(query.data.meta?.total || 0)} busy={query.isFetching} onPage={setPage} onLimit={value=>{setLimit(value);setPage(1);}} />
     </div>
   );
 }

@@ -1,0 +1,2 @@
+import { OperationalWorkspace } from '@/components/operational-workspace';
+export default function Page() { return <OperationalWorkspace title="Serial Numbers" description="Trace individual inventory units." endpoint="/closure/serials" columns={['item_id','serial_no','warehouse_id','status']} create={{fields:[{key:'item_id',label:'Item',required:true},{key:'serial_no',label:'Serial number',required:true},{key:'warehouse_id',label:'Warehouse',required:true}]}} />; }

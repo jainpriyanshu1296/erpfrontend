@@ -14,7 +14,7 @@ export function ModuleSidebar({ title, items, children }: { title: string; items
       <nav className="mt-2 space-y-1" aria-label={`${title} navigation`}>
         {items.map(item => {
           const active = pathname === item.href || (item.href !== `/${title.toLowerCase().split(' ')[0]}` && pathname.startsWith(`${item.href}/`));
-          return <Link key={item.href} href={item.href} className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition ${active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}>{item.label}</Link>;
+          return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition ${active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-indigo-50 hover:text-indigo-700'}`}>{item.label}</Link>;
         })}
       </nav>
     </aside>

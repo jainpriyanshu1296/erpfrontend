@@ -133,6 +133,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { label: 'System Overview', path: '/admin/dashboard', icon: LayoutDashboard },
     { label: 'Organizations', path: '/admin/organizations', icon: Building2 },
     { label: 'Global Modules', path: '/admin/modules', icon: PackageCheck },
+    { label: 'Public Content', path: '/admin/content', icon: PackageCheck },
   ];
 
   return (

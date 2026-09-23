@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Pagination } from '@/components/pagination';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Search, Upload } from 'lucide-react';
 import { api, recordsApi } from '@/lib/api';
@@ -19,6 +20,8 @@ export default function Page() {
   const client = useQueryClient();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [open, setOpen] = useState(false);
   const [vendorId, setVendorId] = useState('');
   const [grnId, setGrnId] = useState('');
@@ -31,12 +34,12 @@ export default function Page() {
   const itemsQuery = useQuery({ queryKey: ['items-master'], queryFn: async () => { const r = await api.get<Item[]>('/masters/items'); return r.data || []; } });
   const warehousesQuery = useQuery({ queryKey: ['warehouses-master'], queryFn: async () => { const r = await api.get<Warehouse[]>('/masters/warehouses'); return r.data || []; } });
   const query = useQuery({
-    queryKey: ['purchase-returns', search],
+    queryKey: ['purchase-returns', search, page, limit],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: '100' };
+      const params: Record<string, string> = { page: String(page), limit: String(limit) };
       if (search) params.search = search;
       const r = await recordsApi('/purchase/returns').list(params);
-      return (r.data || []) as Return[];
+      return { rows: (r.data || []) as Return[], total: Number(r.meta?.total || 0) };
     },
   });
 
@@ -63,7 +66,7 @@ export default function Page() {
   const vendors = vendorsQuery.data || [];
   const items = itemsQuery.data || [];
   const warehouses = warehousesQuery.data || [];
-  const rows = query.data || [];
+  const rows = query.data?.rows || [];
   const inp = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500';
 
   return (
@@ -81,7 +84,7 @@ export default function Page() {
 
       <div className="flex items-center gap-3 rounded-xl border bg-white p-3">
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search returns…" className="w-full outline-none text-sm" />
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search returns…" className="w-full outline-none text-sm" />
       </div>
 
       {open && (
@@ -174,6 +177,7 @@ export default function Page() {
             </table>
           </div>
         )}
+      {query.isSuccess && <Pagination page={page} limit={limit} total={query.data.total} busy={query.isFetching} onPage={setPage} onLimit={value => { setLimit(value); setPage(1); }} />}
     </div>
   );
 }

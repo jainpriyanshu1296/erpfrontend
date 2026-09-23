@@ -1,0 +1,2 @@
+import { OperationalWorkspace } from '@/components/operational-workspace';
+export default function Page() { return <OperationalWorkspace title="Stock Batches" description="Trace batches by item, warehouse and expiry." endpoint="/closure/batches" columns={['item_id','batch_no','warehouse_id','quantity','expiry_date']} create={{fields:[{key:'item_id',label:'Item',required:true},{key:'batch_no',label:'Batch number',required:true},{key:'warehouse_id',label:'Warehouse',required:true},{key:'expiry_date',label:'Expiry',type:'date'}]}} />; }

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { Pagination } from '@/components/pagination';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X, Search } from 'lucide-react';
 import { api, recordsApi } from '@/lib/api';
@@ -21,6 +22,8 @@ export default function Page() {
   const client = useQueryClient();
   const { showToast } = useToast();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [statusFilter, setStatusFilter] = useState('');
   const [open, setOpen] = useState(false);
   const [department, setDepartment] = useState('');
@@ -31,13 +34,13 @@ export default function Page() {
 
   const itemsQuery = useQuery({ queryKey: ['items-master'], queryFn: async () => { const r = await api.get<Item[]>('/masters/items'); return r.data || []; } });
   const query = useQuery({
-    queryKey: ['purchase-requisitions', search, statusFilter],
+    queryKey: ['purchase-requisitions', search, page, limit, statusFilter],
     queryFn: async () => {
-      const params: Record<string, string> = { limit: '100' };
+      const params: Record<string, string> = { page: String(page), limit: String(limit) };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       const r = await recordsApi('/purchase/requisitions').list(params);
-      return (r.data || []) as PR[];
+      return { rows: (r.data || []) as PR[], total: Number(r.meta?.total || 0) };
     },
   });
 
@@ -56,7 +59,7 @@ export default function Page() {
   });
 
   const items = itemsQuery.data || [];
-  const rows = query.data || [];
+  const rows = query.data?.rows || [];
   const inp = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500';
 
   return (
@@ -74,8 +77,8 @@ export default function Page() {
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white p-3">
         <Search size={18} className="shrink-0 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search requisitions…" className="min-w-0 flex-1 outline-none text-sm" />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search requisitions…" className="min-w-0 flex-1 outline-none text-sm" />
+        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }} className="rounded-lg border px-3 py-2 text-sm">
           <option value="">All statuses</option>
           {['draft', 'submitted', 'approved', 'rejected', 'converted'].map(s => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -163,6 +166,7 @@ export default function Page() {
             </table>
           </div>
         )}
+      {query.isSuccess && <Pagination page={page} limit={limit} total={query.data.total} busy={query.isFetching} onPage={setPage} onLimit={value => { setLimit(value); setPage(1); }} />}
     </div>
   );
 }

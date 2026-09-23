@@ -1,4 +1,5 @@
 'use client';
+import { MasterSelect, hasMasterSource } from '@/components/master-select';
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,6 +8,7 @@ import { api, recordsApi } from '@/lib/api';
 import { EmptyState, ErrorState, Skeleton } from '@/components/shared';
 import { useRouter } from 'next/navigation';
 import { ApprovalPanel } from '@/components/approval-panel';
+import { Pagination } from '@/components/pagination';
 
 type Props = {
   title: string;
@@ -15,6 +17,7 @@ type Props = {
   columns: string[];
   detailPath?: string;
   statusEndpoint?: string;
+  statusMethod?: 'put' | 'patch';
   statuses?: string[];
   /** Use :id as the row identifier. Keeping this serializable allows server pages to configure actions. */
   action?: { label: string; path: string };
@@ -23,18 +26,20 @@ type Props = {
   workflow?: boolean;
 };
 
-export function OperationalWorkspace({ title, description, endpoint, columns, detailPath, statusEndpoint, statuses = [], action, actionBody, create, workflow = false }: Props) {
+export function OperationalWorkspace({ title, description, endpoint, columns, detailPath, statusEndpoint, statusMethod = 'patch', statuses = [], action, actionBody, create, workflow = false }: Props) {
   const router = useRouter();
   const client = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [form, setForm] = useState<Record<string, string>>({});
   const [workflowId, setWorkflowId] = useState<string | null>(null);
-  const query = useQuery({ queryKey: ['operational', endpoint], queryFn: () => recordsApi(endpoint).list({ limit: '200' }) });
-  const rows = ((query.data?.data || []) as Record<string, unknown>[]).filter(row => !search || Object.values(row).some(value => String(value ?? '').toLowerCase().includes(search.toLowerCase())));
+  const query = useQuery({ queryKey: ['operational', endpoint, search, page, limit], queryFn: () => recordsApi(endpoint).list({ search, page: String(page), limit: String(limit) }) });
+  const rows = (query.data?.data || []) as Record<string, unknown>[];
   const hasActions = statuses.length > 0 || Boolean(action);
   const mutation = useMutation({
     mutationFn: (input: { url: string; method: 'status' | 'action'; value?: string }) => input.method === 'status'
-      ? api.patch(input.url, { status: input.value })
+      ? api[statusMethod](input.url, { status: input.value })
       : api.post(input.url, actionBody || {}),
     onSuccess: () => { client.invalidateQueries({ queryKey: ['operational', endpoint] }); client.invalidateQueries({ queryKey: ['operational-detail'] }); },
   });
@@ -44,9 +49,9 @@ export function OperationalWorkspace({ title, description, endpoint, columns, de
   if (query.isError) return <ErrorState message={query.error.message} retry={() => query.refetch()} />;
   return <section className="space-y-5">
     <div><p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">Operations</p><h1 className="text-2xl font-bold text-slate-800">{title}</h1><p className="mt-1 text-sm text-slate-500">{description}</p></div>
-    <div className="flex items-center gap-3 rounded-xl border bg-white p-3"><Search size={18} className="text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${title.toLowerCase()}...`} className="w-full text-sm outline-none" /></div>
+    <div className="flex items-center gap-3 rounded-xl border bg-white p-3"><Search size={18} className="text-slate-400" /><input aria-label={`Search ${title}`} value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={`Search ${title.toLowerCase()}...`} className="w-full text-sm outline-none" /></div>
     {create && <form onSubmit={e => { e.preventDefault(); createMutation.mutate(); }} className="grid gap-3 rounded-xl border bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
-      {create.fields.map(field => <label key={field.key} className="text-xs font-semibold text-slate-600">{field.label}<input required={field.required} type={field.type || 'text'} value={form[field.key] || ''} onChange={e => setForm({ ...form, [field.key]: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-normal" /></label>)}
+      {create.fields.map(field => <label key={field.key} className="text-xs font-semibold text-slate-600">{field.label}{hasMasterSource(field.key) ? <MasterSelect field={field.key} required={field.required} value={form[field.key] || ''} onChange={value=>setForm({...form,[field.key]:value})} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-normal" /> : <input required={field.required} type={field.type || 'text'} value={form[field.key] || ''} onChange={e => setForm({ ...form, [field.key]: e.target.value })} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-normal" />}</label>)}
       <button disabled={createMutation.isPending} className="self-end rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{createMutation.isPending ? 'Saving...' : 'Create'}</button>
       {createMutation.isError && <p className="text-sm text-red-600 sm:col-span-2">{createMutation.error.message}</p>}
     </form>}
@@ -62,5 +67,7 @@ export function OperationalWorkspace({ title, description, endpoint, columns, de
         </tr>; })}
       </tbody></table></div>}
     {workflowId && <ApprovalPanel resource={endpoint} resourceId={workflowId} title={title} />}
+    {mutation.isError && <p role="alert" className="text-sm text-red-700">{mutation.error.message}</p>}
+    <Pagination page={page} limit={limit} total={Number(query.data?.meta?.total || 0)} busy={query.isFetching} onPage={setPage} onLimit={value => { setLimit(value); setPage(1); }} />
   </section>;
 }

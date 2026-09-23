@@ -7,13 +7,15 @@ import { api, recordsApi } from "@/lib/api";
 import { EmptyState, ErrorState, Skeleton } from "@/components/shared";
 import { useToast } from "@/components/toast";
 import { z } from "zod";
+import { Pagination, positiveInteger } from "@/components/pagination";
+import {MasterSelect,hasMasterSource} from '@/components/master-select';
 
 type Field = {
   key: string;
   label: string;
   type?: "text" | "number" | "date" | "select" | "password";
   required?: boolean;
-  options?: string[];
+  options?: Array<string | { value: string; label: string }>;
 };
 type Props = {
   title: string;
@@ -27,6 +29,7 @@ type Props = {
   statusOptions?: string[];
   statusParam?: string;
   exportEndpoint?: string | false;
+  editable?: boolean;
 };
 
 export function ModuleWorkspace({
@@ -41,6 +44,7 @@ export function ModuleWorkspace({
   statusOptions = [],
   statusParam = "status",
   exportEndpoint = false,
+  editable = false,
 }: Props) {
   const client = useQueryClient();
   const resource = recordsApi(endpoint);
@@ -48,10 +52,15 @@ export function ModuleWorkspace({
   const pathname = usePathname();
   const params = useSearchParams();
   const search = params.get("search") || "";
-  const page = Number(params.get("page") || 1);
+  const page = positiveInteger(params.get("page"), 1);
+  const limit = positiveInteger(params.get("limit"), 20, 100);
   const status = params.get("status") || "";
+  const itemType = endpoint === '/inventory/items' ? params.get('item_type') || '' : '';
+  const sort = params.get('sort') || '';
+  const direction = params.get('direction') || 'asc';
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
   const updateQuery = (next: Record<string, string>) => {
     const query = new URLSearchParams(params.toString());
     Object.entries(next).forEach(([key, value]) =>
@@ -62,11 +71,13 @@ export function ModuleWorkspace({
   };
   const { showToast } = useToast();
   const query = useQuery({
-    queryKey: ["workspace", endpoint, page, search, status],
+    queryKey: ["workspace", endpoint, page, limit, search, status,itemType,sort,direction],
     queryFn: () =>
       resource.list({
         page: String(page),
-        limit: "20",
+        limit: String(limit),
+        ...(itemType ? {item_type:itemType} : {}),
+        ...(sort ? {sort,direction} : {}),
         ...(search ? { search } : {}),
         ...(status
           ? {
@@ -98,13 +109,17 @@ export function ModuleWorkspace({
         throw new Error(
           parsed.error.issues[0]?.message || "Please review the form",
         );
-      return resource.create(parsed.data);
+      const body = Object.fromEntries(fields.map(field => [field.key,
+        field.type === "number" && parsed.data[field.key] !== "" && parsed.data[field.key] !== undefined
+          ? Number(parsed.data[field.key]) : parsed.data[field.key]]));
+      return editingId ? resource.update(editingId, body) : resource.create(body);
     },
     onSuccess: () => {
       setForm({});
       setOpen(false);
       client.invalidateQueries({ queryKey: ["workspace", endpoint] });
-      showToast(`${title} created successfully`, "success");
+      setEditingId(null);
+      showToast(`${title} saved successfully`, "success");
     },
     onError: (error) => showToast(error.message, "error"),
   });
@@ -173,7 +188,7 @@ export function ModuleWorkspace({
             Excel
           </button>}
           {fields.length > 0 && <button
-              onClick={() => setOpen(true)}
+              onClick={() => { setEditingId(null); setForm({}); setOpen(true); }}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white"
             >
               <Plus size={15} className="mr-2 inline" />
@@ -206,6 +221,9 @@ export function ModuleWorkspace({
             ))}
           </select>
         )}
+        {endpoint === '/inventory/items' && <select aria-label="Item type" value={itemType} onChange={event=>updateQuery({item_type:event.target.value})} className="rounded-lg border px-3 py-2 text-sm"><option value="">All item types</option>{['raw_material','finished_good','semi_finished','consumable','service'].map(type=><option key={type} value={type}>{type.replaceAll('_',' ')}</option>)}</select>}
+        <select aria-label="Sort by" value={sort} onChange={event=>updateQuery({sort:event.target.value})} className="rounded-lg border px-3 py-2 text-sm"><option value="">Default order</option>{columns.map(column=><option key={column} value={column}>{column.replaceAll('_',' ')}</option>)}</select>
+        <select aria-label="Sort direction" value={direction} onChange={event=>updateQuery({direction:event.target.value})} className="rounded-lg border px-3 py-2 text-sm"><option value="asc">Ascending</option><option value="desc">Descending</option></select>
       </div>
       {open && fields.length > 0 && (
         <form
@@ -216,7 +234,7 @@ export function ModuleWorkspace({
           className="rounded-xl border bg-white p-5 shadow-sm"
         >
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Create {title}</h2>
+            <h2 className="font-semibold">{editingId ? "Edit" : "Create"} {title}</h2>
             <button type="button" onClick={() => setOpen(false)}>
               <X size={18} />
             </button>
@@ -225,7 +243,7 @@ export function ModuleWorkspace({
             {fields.map((field) => (
               <label key={field.key} className="text-sm font-medium">
                 {field.label}
-                {field.type === "select" ? (
+                {hasMasterSource(field.key) && field.type !== 'select' ? <MasterSelect field={field.key} required={field.required} value={form[field.key] || ''} onChange={value=>setForm({...form,[field.key]:value})} className="mt-1 w-full rounded-lg border px-3 py-2" /> : field.type === "select" ? (
                   <select
                     required={field.required}
                     value={form[field.key] || ""}
@@ -236,7 +254,7 @@ export function ModuleWorkspace({
                   >
                     <option value="">Select</option>
                     {field.options?.map((option) => (
-                      <option key={option}>{option}</option>
+                      <option key={typeof option === "string" ? option : option.value} value={typeof option === "string" ? option : option.value}>{typeof option === "string" ? option : option.label}</option>
                     ))}
                   </select>
                 ) : (
@@ -301,7 +319,7 @@ export function ModuleWorkspace({
                       {column.replaceAll("_", " ")}
                     </th>
                   ))}
-                  {actionEndpoint && <th className="p-3">Actions</th>}
+                  {(actionEndpoint || editable) && <th className="p-3">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -320,10 +338,14 @@ export function ModuleWorkspace({
                         {String(row[column] ?? "-")}
                       </td>
                     ))}
-                    {actionEndpoint && Boolean(row.id) && (
+                    {(actionEndpoint || editable) && Boolean(row.id) && (
                       <td className="p-3">
                         <div className="flex gap-1">
-                          {statusOptions.map((option) => (
+                          {editable && <button type="button" className="rounded border px-2 py-1" onClick={event => {
+                            event.stopPropagation(); setEditingId(String(row.id));
+                            setForm(Object.fromEntries(fields.map(field => [field.key, String(row[field.key] ?? "")]))); setOpen(true);
+                          }}>Edit</button>}
+                          {actionEndpoint && statusOptions.map((option) => (
                             <button
                               key={option}
                               disabled={
@@ -350,32 +372,9 @@ export function ModuleWorkspace({
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between text-sm text-slate-500">
-            <span>
-              Page {page}
-              {query.data?.meta?.total !== undefined
-                ? ` · ${query.data.meta.total} total`
-                : ""}
-            </span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => updateQuery({ page: String(page - 1) })}
-                className="rounded border px-3 py-1 disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <button
-                disabled={rows.length < 20}
-                onClick={() => updateQuery({ page: String(page + 1) })}
-                className="rounded border px-3 py-1 disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
         </>
       )}
+      {query.isSuccess && <Pagination page={page} limit={limit} total={Number(query.data?.meta?.total || 0)} busy={query.isFetching} onPage={value => updateQuery({ page: String(value) })} onLimit={value => updateQuery({ limit: String(value), page: "1" })} />}
     </section>
   );
 }
